@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button, Card, Input, Label } from '@/components/ui'
 import { cn } from '@/lib/cn'
+import { translateAuthError } from '@/lib/auth-errors'
 import { Home, Users } from 'lucide-react'
 
 function OnboardingForm() {
@@ -38,7 +39,7 @@ function OnboardingForm() {
 
     setLoading(false)
     if (error) {
-      setError(mode === 'join' ? 'Código de convite inválido.' : error.message)
+      setError(mode === 'join' ? 'Código de convite inválido.' : translateAuthError(error.message))
       return
     }
     router.push('/')

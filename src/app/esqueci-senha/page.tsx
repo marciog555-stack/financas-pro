@@ -5,6 +5,7 @@ import { Suspense, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button, Card, Input, Label } from '@/components/ui'
+import { translateAuthError } from '@/lib/auth-errors'
 import { KeyRound } from 'lucide-react'
 
 function EsqueciSenhaForm() {
@@ -26,7 +27,7 @@ function EsqueciSenhaForm() {
     })
     setLoading(false)
     if (error) {
-      setError(error.message)
+      setError(translateAuthError(error.message))
       return
     }
     setSent(true)

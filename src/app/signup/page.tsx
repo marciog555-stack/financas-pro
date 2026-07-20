@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button, Card, Input, Label } from '@/components/ui'
 import { PasswordInput } from '@/components/password-input'
+import { translateAuthError } from '@/lib/auth-errors'
 import { Wallet } from 'lucide-react'
 
 function SignupForm() {
@@ -26,7 +27,7 @@ function SignupForm() {
     const { data, error } = await supabase.auth.signUp({ email, password })
     setLoading(false)
     if (error) {
-      setError(error.message)
+      setError(translateAuthError(error.message))
       return
     }
     if (data.session) {

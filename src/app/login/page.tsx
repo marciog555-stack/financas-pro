@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button, Card, Input, Label } from '@/components/ui'
 import { PasswordInput } from '@/components/password-input'
+import { translateAuthError } from '@/lib/auth-errors'
 import { Wallet } from 'lucide-react'
 
 function LoginForm() {
@@ -25,7 +26,7 @@ function LoginForm() {
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     setLoading(false)
     if (error) {
-      setError(error.message === 'Invalid login credentials' ? 'E-mail ou senha inválidos.' : error.message)
+      setError(translateAuthError(error.message))
       return
     }
     router.push(invite ? `/onboarding?invite=${invite}` : '/')

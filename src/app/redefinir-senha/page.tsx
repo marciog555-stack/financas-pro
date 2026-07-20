@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button, Card, Label } from '@/components/ui'
 import { PasswordInput } from '@/components/password-input'
+import { translateAuthError } from '@/lib/auth-errors'
 import { KeyRound, CheckCircle2 } from 'lucide-react'
 
 export default function RedefinirSenhaPage() {
@@ -61,7 +62,7 @@ export default function RedefinirSenhaPage() {
     const { error } = await supabase.auth.updateUser({ password })
     setLoading(false)
     if (error) {
-      setError(error.message)
+      setError(translateAuthError(error.message))
       return
     }
     setDone(true)
