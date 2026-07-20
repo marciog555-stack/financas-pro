@@ -3,6 +3,7 @@ import { Card } from '@/components/ui'
 import { MonthlyBarChart, CategoryPieChart } from '@/components/reports-charts'
 import { EXPENSE_CATEGORIES, type ExpenseCategory } from '@/lib/categories'
 import { fmtCurrency } from '@/lib/format'
+import { BarChart2 } from 'lucide-react'
 
 export default async function RelatoriosPage() {
   const supabase = await createClient()
@@ -71,33 +72,40 @@ export default async function RelatoriosPage() {
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div className="animate-fade-in-up">
+        <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
+          <BarChart2 size={18} className="text-accent-blue" /> Relatórios
+        </h2>
+        <p className="text-sm text-foreground/45">Panorama dos últimos 6 meses</p>
+      </div>
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 animate-fade-in-up [animation-delay:80ms]">
         <Card>
-          <p className="text-xs text-foreground/50">Renda média mensal (6 meses)</p>
-          <p className="mt-1 font-mono text-lg font-semibold text-emerald-600">
+          <p className="text-xs text-foreground/50">Renda média mensal</p>
+          <p className="mt-1 font-mono text-lg font-semibold text-accent-emerald">
             {fmtCurrency(totalIncome6m / 6)}
           </p>
         </Card>
         <Card>
-          <p className="text-xs text-foreground/50">Despesa média mensal (6 meses)</p>
-          <p className="mt-1 font-mono text-lg font-semibold text-red-500">
+          <p className="text-xs text-foreground/50">Despesa média mensal</p>
+          <p className="mt-1 font-mono text-lg font-semibold text-accent-red">
             {fmtCurrency(totalExpense6m / 6)}
           </p>
         </Card>
         <Card>
           <p className="text-xs text-foreground/50">Economia média mensal</p>
-          <p className={`mt-1 font-mono text-lg font-semibold ${avgSavings >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+          <p className={`mt-1 font-mono text-lg font-semibold ${avgSavings >= 0 ? 'text-accent-emerald' : 'text-accent-red'}`}>
             {fmtCurrency(avgSavings)}
           </p>
         </Card>
       </div>
 
-      <Card>
-        <h2 className="mb-3 text-sm font-semibold">Renda x Despesas (últimos 6 meses)</h2>
+      <Card className="animate-fade-in-up [animation-delay:120ms]">
+        <h2 className="mb-3 text-sm font-semibold">Renda x Despesas</h2>
         <MonthlyBarChart data={months} />
       </Card>
 
-      <Card>
+      <Card className="animate-fade-in-up [animation-delay:160ms]">
         <h2 className="mb-3 text-sm font-semibold">Despesas por categoria</h2>
         <CategoryPieChart data={categoryData} />
       </Card>

@@ -15,7 +15,18 @@ import {
 } from 'recharts'
 import { fmtCurrency } from '@/lib/format'
 
-const PIE_COLORS = ['#10B981', '#3B82F6', '#8B5CF6', '#F59E0B', '#EF4444', '#EC4899', '#14B8A6', '#6366F1', '#F97316', '#84CC16']
+const PIE_COLORS = [
+  'var(--accent-emerald)',
+  'var(--accent-blue)',
+  'var(--accent-purple)',
+  'var(--accent-orange)',
+  'var(--accent-red)',
+  '#14B8A6',
+  '#6366F1',
+  '#F97316',
+  '#84CC16',
+  '#EC4899',
+]
 
 export function MonthlyBarChart({
   data,
@@ -30,11 +41,16 @@ export function MonthlyBarChart({
         <YAxis tick={{ fontSize: 12 }} stroke="currentColor" opacity={0.5} width={80} tickFormatter={(v) => fmtCurrency(v)} />
         <Tooltip
           formatter={(value) => fmtCurrency(Number(value))}
-          contentStyle={{ borderRadius: 8, border: 'none', fontSize: 13 }}
+          contentStyle={{
+            borderRadius: 12,
+            border: '1px solid var(--border-color)',
+            fontSize: 13,
+            background: 'var(--background)',
+          }}
         />
         <Legend />
-        <Bar dataKey="renda" name="Renda" fill="#10B981" radius={[4, 4, 0, 0]} />
-        <Bar dataKey="despesas" name="Despesas" fill="#EF4444" radius={[4, 4, 0, 0]} />
+        <Bar dataKey="renda" name="Renda" fill="var(--accent-emerald)" radius={[6, 6, 0, 0]} />
+        <Bar dataKey="despesas" name="Despesas" fill="var(--accent-red)" radius={[6, 6, 0, 0]} />
       </BarChart>
     </ResponsiveContainer>
   )
@@ -52,7 +68,15 @@ export function CategoryPieChart({ data }: { data: { name: string; value: number
             <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
           ))}
         </Pie>
-        <Tooltip formatter={(value) => fmtCurrency(Number(value))} contentStyle={{ borderRadius: 8, border: 'none', fontSize: 13 }} />
+        <Tooltip
+          formatter={(value) => fmtCurrency(Number(value))}
+          contentStyle={{
+            borderRadius: 12,
+            border: '1px solid var(--border-color)',
+            fontSize: 13,
+            background: 'var(--background)',
+          }}
+        />
       </PieChart>
     </ResponsiveContainer>
   )

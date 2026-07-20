@@ -1,11 +1,13 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Plus, Trash2, RefreshCw, CheckCircle2, Circle } from 'lucide-react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { Plus, Trash2, RefreshCw, CheckCircle2, Circle, CreditCard } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useHousehold, ownerLabel } from '@/lib/household-context'
 import { OwnerSelect } from '@/components/owner-select'
 import { Button, Card, EmptyState, Input, Label, Select, Badge } from '@/components/ui'
+import { BottomSheet } from '@/components/bottom-sheet'
 import { fmtCurrency, fmtDate, todayISO } from '@/lib/format'
 import { EXPENSE_CATEGORIES, type ExpenseCategory } from '@/lib/categories'
 import type { Tables } from '@/lib/database.types'
@@ -15,9 +17,12 @@ type Expense = Tables<'expenses'>
 export default function DespesasPage() {
   const { household, members } = useHousehold()
   const supabase = createClient()
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [sheetOpen, setSheetOpen] = useState(false)
   const [form, setForm] = useState({
     name: '',
     amount: '',
@@ -42,6 +47,14 @@ export default function DespesasPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  useEffect(() => {
+    if (searchParams.get('new') === '1') {
+      setSheetOpen(true)
+      router.replace('/despesas')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
+
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault()
     if (!form.name || !form.amount) return
@@ -58,6 +71,7 @@ export default function DespesasPage() {
     setSaving(false)
     if (!error) {
       setForm({ name: '', amount: '', dueDate: todayISO(), category: 'other', owner: '' })
+      setSheetOpen(false)
       load()
     }
   }
@@ -79,10 +93,70 @@ export default function DespesasPage() {
 
   return (
     <div className="flex flex-col gap-5">
-      <Card>
-        <h2 className="mb-3 text-sm font-semibold">Nova despesa</h2>
-        <form onSubmit={handleAdd} className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-          <div className="col-span-2">
+      <div className="flex items-center justify-between animate-fade-in-up">
+        <div>
+          <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
+            <CreditCard size={18} className="text-accent-red" /> Despesas
+          </h2>
+          <p className="text-sm text-foreground/45">
+            {fmtCurrency(total)} no total · {fmtCurrency(pending)} pendente
+          </p>
+        </div>
+        <Button onClick={() => setSheetOpen(true)}>
+          <Plus size={16} /> Despesa
+        </Button>
+      </div>
+
+      <Card className="animate-fade-in-up [animation-delay:80ms]">
+        {loading ? (
+          <div className="flex justify-center py-8 text-foreground/40">
+            <RefreshCw className="animate-spin" size={18} />
+          </div>
+        ) : expenses.length === 0 ? (
+          <EmptyState title="Nenhuma despesa ainda" description="Adicione sua primeira conta." />
+        ) : (
+          <div className="flex flex-col divide-y divide-border">
+            {expenses.map((expense) => {
+              const cat = EXPENSE_CATEGORIES[expense.category as ExpenseCategory] ?? EXPENSE_CATEGORIES.other
+              return (
+                <div key={expense.id} className="flex items-center gap-3 py-3">
+                  <button onClick={() => togglePaid(expense)} aria-label="Marcar como pago">
+                    {expense.is_paid ? (
+                      <CheckCircle2 className="text-accent-emerald" size={20} />
+                    ) : (
+                      <Circle className="text-foreground/20" size={20} />
+                    )}
+                  </button>
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface-2 text-base">
+                    {cat.emoji}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{expense.name}</p>
+                    <p className="text-xs text-foreground/40">
+                      Vence {fmtDate(expense.due_date)} · {ownerLabel(members, expense.owner_profile_id)}
+                    </p>
+                  </div>
+                  {!expense.is_paid && <Badge tone="warning">Pendente</Badge>}
+                  <span className="font-mono text-sm font-semibold">
+                    {fmtCurrency(Number(expense.amount))}
+                  </span>
+                  <button
+                    onClick={() => handleDelete(expense.id)}
+                    className="text-foreground/25 transition-colors hover:text-accent-red"
+                    aria-label="Excluir"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </Card>
+
+      <BottomSheet open={sheetOpen} onClose={() => setSheetOpen(false)} title="Nova despesa">
+        <form onSubmit={handleAdd} className="flex flex-col gap-3 pb-2">
+          <div>
             <Label>Nome</Label>
             <Input
               placeholder="Aluguel, mercado…"
@@ -91,26 +165,28 @@ export default function DespesasPage() {
               required
             />
           </div>
-          <div>
-            <Label>Valor</Label>
-            <Input
-              type="number"
-              step="0.01"
-              min="0"
-              placeholder="0,00"
-              value={form.amount}
-              onChange={(e) => setForm({ ...form, amount: e.target.value })}
-              required
-            />
-          </div>
-          <div>
-            <Label>Vencimento</Label>
-            <Input
-              type="date"
-              value={form.dueDate}
-              onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
-              required
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Valor</Label>
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="0,00"
+                value={form.amount}
+                onChange={(e) => setForm({ ...form, amount: e.target.value })}
+                required
+              />
+            </div>
+            <div>
+              <Label>Vencimento</Label>
+              <Input
+                type="date"
+                value={form.dueDate}
+                onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
+                required
+              />
+            </div>
           </div>
           <div>
             <Label>Categoria</Label>
@@ -125,76 +201,15 @@ export default function DespesasPage() {
               ))}
             </Select>
           </div>
-          <div className="col-span-2 sm:col-span-2">
+          <div>
             <Label>Dono</Label>
-            <OwnerSelect
-              value={form.owner}
-              onChange={(owner) => setForm({ ...form, owner })}
-              includeShared
-            />
+            <OwnerSelect value={form.owner} onChange={(owner) => setForm({ ...form, owner })} includeShared />
           </div>
-          <div className="col-span-2 flex items-end sm:col-span-3">
-            <Button type="submit" disabled={saving} className="ml-auto">
-              <Plus size={16} /> Adicionar
-            </Button>
-          </div>
+          <Button type="submit" disabled={saving} className="mt-2">
+            <Plus size={16} /> Adicionar
+          </Button>
         </form>
-      </Card>
-
-      <Card>
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-semibold">Despesas registradas</h2>
-          <div className="text-right">
-            <p className="font-mono text-sm font-semibold">{fmtCurrency(total)}</p>
-            <p className="text-xs text-amber-600 dark:text-amber-400">
-              {fmtCurrency(pending)} pendente
-            </p>
-          </div>
-        </div>
-        {loading ? (
-          <div className="flex justify-center py-8 text-foreground/40">
-            <RefreshCw className="animate-spin" size={18} />
-          </div>
-        ) : expenses.length === 0 ? (
-          <EmptyState title="Nenhuma despesa ainda" description="Adicione sua primeira conta acima." />
-        ) : (
-          <div className="flex flex-col divide-y divide-black/5 dark:divide-white/10">
-            {expenses.map((expense) => {
-              const cat = EXPENSE_CATEGORIES[expense.category as ExpenseCategory] ?? EXPENSE_CATEGORIES.other
-              return (
-                <div key={expense.id} className="flex items-center gap-3 py-3">
-                  <button onClick={() => togglePaid(expense)} aria-label="Marcar como pago">
-                    {expense.is_paid ? (
-                      <CheckCircle2 className="text-emerald-500" size={20} />
-                    ) : (
-                      <Circle className="text-foreground/20" size={20} />
-                    )}
-                  </button>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">
-                      {cat.emoji} {expense.name}
-                    </p>
-                    <p className="text-xs text-foreground/40">
-                      Vence {fmtDate(expense.due_date)} · {ownerLabel(members, expense.owner_profile_id)}
-                    </p>
-                  </div>
-                  {!expense.is_paid && <Badge tone="warning">Pendente</Badge>}
-                  <span className="font-mono text-sm font-semibold">
-                    {fmtCurrency(Number(expense.amount))}
-                  </span>
-                  <button
-                    onClick={() => handleDelete(expense.id)}
-                    className="text-foreground/30 transition-colors hover:text-red-500"
-                    aria-label="Excluir"
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </Card>
+      </BottomSheet>
     </div>
   )
 }

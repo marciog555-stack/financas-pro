@@ -61,13 +61,13 @@ export function LoanInstallments({ loanId, onToggle }: { loanId: string; onToggl
   return (
     <div className="flex flex-col gap-2">
       {early.length > 0 && (
-        <p className="text-xs text-emerald-600 dark:text-emerald-400">
+        <p className="text-xs text-accent-emerald">
           {early.length} parcela{early.length > 1 ? 's' : ''} paga{early.length > 1 ? 's' : ''} adiantada
           {early.length > 1 ? 's' : ''}: {early.map((i) => `#${i.number}`).join(', ')}
         </p>
       )}
-      <div className="max-h-64 overflow-y-auto rounded-lg border border-black/5 dark:border-white/10">
-        <div className="flex flex-col divide-y divide-black/5 dark:divide-white/10">
+      <div className="max-h-64 overflow-y-auto rounded-xl border border-border">
+        <div className="flex flex-col divide-y divide-border">
           {installments.map((inst) => {
             const isEarly = Boolean(inst.is_paid && inst.paid_date && inst.paid_date < inst.due_date)
             const isLate = Boolean(inst.is_paid && inst.paid_date && inst.paid_date > inst.due_date)
@@ -75,7 +75,7 @@ export function LoanInstallments({ loanId, onToggle }: { loanId: string; onToggl
               <div key={inst.id} className="flex items-center gap-2 px-3 py-2 text-xs">
                 <button onClick={() => togglePaid(inst)} aria-label="Marcar parcela como paga">
                   {inst.is_paid ? (
-                    <CheckCircle2 size={16} className="text-emerald-500" />
+                    <CheckCircle2 size={16} className="text-accent-emerald" />
                   ) : (
                     <Circle size={16} className="text-foreground/20" />
                   )}
@@ -88,7 +88,7 @@ export function LoanInstallments({ loanId, onToggle }: { loanId: string; onToggl
                     type="date"
                     value={inst.paid_date ?? ''}
                     onChange={(e) => updatePaidDate(inst, e.target.value)}
-                    className="rounded border border-black/10 bg-transparent px-1 py-0.5 text-[11px] dark:border-white/10"
+                    className="rounded-md border border-border bg-transparent px-1 py-0.5 text-[11px]"
                   />
                 )}
                 {isEarly && <Badge tone="success">Adiantada</Badge>}

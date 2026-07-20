@@ -47,9 +47,9 @@ function OnboardingForm() {
 
   return (
     <div className="flex min-h-screen items-center justify-center p-4">
-      <Card className="w-full max-w-sm">
-        <h1 className="text-lg font-semibold">Vamos começar</h1>
-        <p className="mt-1 text-sm text-foreground/50">
+      <Card className="w-full max-w-sm animate-fade-in-up">
+        <h1 className="text-lg font-semibold tracking-tight">Vamos começar</h1>
+        <p className="mt-1 text-sm text-foreground/45">
           Crie sua casa financeira ou entre em uma existente com um convite.
         </p>
 
@@ -58,10 +58,10 @@ function OnboardingForm() {
             type="button"
             onClick={() => setMode('create')}
             className={cn(
-              'flex flex-col items-center gap-1.5 rounded-lg border px-3 py-3 text-sm transition-colors',
+              'flex flex-col items-center gap-1.5 rounded-2xl border px-3 py-3 text-sm transition-colors',
               mode === 'create'
-                ? 'border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
-                : 'border-black/10 hover:bg-black/5 dark:border-white/10 dark:hover:bg-white/5'
+                ? 'border-accent-emerald/50 bg-accent-emerald/10 text-accent-emerald'
+                : 'border-border hover:bg-surface-2'
             )}
           >
             <Home size={18} />
@@ -71,10 +71,10 @@ function OnboardingForm() {
             type="button"
             onClick={() => setMode('join')}
             className={cn(
-              'flex flex-col items-center gap-1.5 rounded-lg border px-3 py-3 text-sm transition-colors',
+              'flex flex-col items-center gap-1.5 rounded-2xl border px-3 py-3 text-sm transition-colors',
               mode === 'join'
-                ? 'border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
-                : 'border-black/10 hover:bg-black/5 dark:border-white/10 dark:hover:bg-white/5'
+                ? 'border-accent-emerald/50 bg-accent-emerald/10 text-accent-emerald'
+                : 'border-border hover:bg-surface-2'
             )}
           >
             <Users size={18} />
@@ -114,7 +114,7 @@ function OnboardingForm() {
             </div>
           )}
 
-          {error && <p className="text-xs text-red-500">{error}</p>}
+          {error && <p className="text-xs text-accent-red">{error}</p>}
           <Button type="submit" disabled={loading} className="mt-2 w-full">
             {loading ? 'Salvando…' : 'Concluir'}
           </Button>

@@ -1,8 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
 import { Card, Badge } from '@/components/ui'
+import { AnimatedNumber } from '@/components/animated-number'
+import { ProgressBar } from '@/components/progress-bar'
 import { fmtCurrency, fmtDate } from '@/lib/format'
 import { EXPENSE_CATEGORIES, type ExpenseCategory } from '@/lib/categories'
-import { TrendingUp, TrendingDown, Wallet, Landmark } from 'lucide-react'
+import { TrendingUp, TrendingDown, Wallet, Landmark, Target, CalendarClock } from 'lucide-react'
 import Link from 'next/link'
 
 export default async function DashboardPage() {
@@ -46,54 +48,77 @@ export default async function DashboardPage() {
     .sort((a, b) => (a.due_date! < b.due_date! ? -1 : 1))
     .slice(0, 5)
 
+  const positive = balance >= 0
+
   return (
     <div className="flex flex-col gap-5">
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Card>
-          <div className="flex items-center gap-2 text-xs text-foreground/50">
-            <TrendingUp size={14} className="text-emerald-500" /> Renda do mês
+      {/* Hero: saldo total */}
+      <Card
+        className={`animate-fade-in-up overflow-hidden border-0 bg-gradient-to-br p-6 text-white shadow-lg ${
+          positive
+            ? 'from-accent-blue/90 to-accent-emerald/80 shadow-accent-blue/20'
+            : 'from-accent-red/85 to-accent-blue/70 shadow-accent-red/20'
+        }`}
+      >
+        <p className="text-xs font-medium uppercase tracking-wide text-white/70">Saldo do mês</p>
+        <p className="mt-1.5 text-4xl font-semibold tracking-tight">
+          <AnimatedNumber value={balance} />
+        </p>
+        <div className="mt-5 flex gap-6 border-t border-white/20 pt-4">
+          <div className="flex items-center gap-2">
+            <TrendingUp size={15} className="text-white/80" />
+            <div>
+              <p className="text-[11px] text-white/60">Receitas</p>
+              <p className="text-sm font-semibold">{fmtCurrency(totalIncome)}</p>
+            </div>
           </div>
-          <p className="mt-1 font-mono text-xl font-semibold text-emerald-600">{fmtCurrency(totalIncome)}</p>
+          <div className="flex items-center gap-2">
+            <TrendingDown size={15} className="text-white/80" />
+            <div>
+              <p className="text-[11px] text-white/60">Despesas</p>
+              <p className="text-sm font-semibold">{fmtCurrency(totalExpense)}</p>
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      {/* Dívidas e benefícios */}
+      <div className="grid grid-cols-2 gap-3 animate-fade-in-up [animation-delay:80ms]">
+        <Card className="p-4">
+          <div className="flex items-center gap-2 text-xs font-medium text-foreground/45">
+            <Landmark size={14} className="text-accent-red" /> Dívidas
+          </div>
+          <p className="mt-1.5 font-mono text-lg font-semibold text-accent-red">{fmtCurrency(totalLoanDebt)}</p>
         </Card>
-        <Card>
-          <div className="flex items-center gap-2 text-xs text-foreground/50">
-            <TrendingDown size={14} className="text-red-500" /> Despesas do mês
+        <Card className="p-4">
+          <div className="flex items-center gap-2 text-xs font-medium text-foreground/45">
+            <Wallet size={14} className="text-accent-orange" /> Benefícios
           </div>
-          <p className="mt-1 font-mono text-xl font-semibold text-red-500">{fmtCurrency(totalExpense)}</p>
-        </Card>
-        <Card>
-          <div className="flex items-center gap-2 text-xs text-foreground/50">
-            <Wallet size={14} className="text-blue-500" /> Saldo do mês
-          </div>
-          <p className={`mt-1 font-mono text-xl font-semibold ${balance >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-            {fmtCurrency(balance)}
-          </p>
-        </Card>
-        <Card>
-          <div className="flex items-center gap-2 text-xs text-foreground/50">
-            <Landmark size={14} className="text-purple-500" /> Dívida em aberto
-          </div>
-          <p className="mt-1 font-mono text-xl font-semibold">{fmtCurrency(totalLoanDebt)}</p>
+          <p className="mt-1.5 font-mono text-lg font-semibold text-accent-orange">{fmtCurrency(totalBenefits)}</p>
         </Card>
       </div>
 
       <div className="grid gap-5 lg:grid-cols-2">
-        <Card>
+        <Card className="animate-fade-in-up [animation-delay:120ms]">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-semibold">Contas a vencer</h2>
-            <Link href="/despesas" className="text-xs font-medium text-emerald-600 hover:underline">
+            <h2 className="flex items-center gap-2 text-sm font-semibold">
+              <CalendarClock size={15} className="text-foreground/40" /> Contas a vencer
+            </h2>
+            <Link href="/despesas" className="text-xs font-medium text-accent-emerald hover:underline">
               Ver todas
             </Link>
           </div>
           {upcoming.length === 0 ? (
             <p className="py-6 text-center text-sm text-foreground/40">Tudo em dia por aqui 🎉</p>
           ) : (
-            <div className="flex flex-col divide-y divide-black/5 dark:divide-white/10">
+            <div className="flex flex-col divide-y divide-border">
               {upcoming.map((e) => {
                 const cat = EXPENSE_CATEGORIES[e.category as ExpenseCategory] ?? EXPENSE_CATEGORIES.other
                 return (
                   <div key={e.id} className="flex items-center gap-3 py-2.5">
-                    <span className="text-lg">{cat.emoji}</span>
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface-2 text-lg">
+                      {cat.emoji}
+                    </span>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium">{e.name}</p>
                       <p className="text-xs text-foreground/40">Vence {fmtDate(e.due_date)}</p>
@@ -106,17 +131,19 @@ export default async function DashboardPage() {
           )}
         </Card>
 
-        <Card>
+        <Card className="animate-fade-in-up [animation-delay:160ms]">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-semibold">Metas</h2>
-            <Link href="/metas" className="text-xs font-medium text-emerald-600 hover:underline">
+            <h2 className="flex items-center gap-2 text-sm font-semibold">
+              <Target size={15} className="text-accent-purple" /> Metas
+            </h2>
+            <Link href="/metas" className="text-xs font-medium text-accent-emerald hover:underline">
               Ver todas
             </Link>
           </div>
           {!goals || goals.length === 0 ? (
             <p className="py-6 text-center text-sm text-foreground/40">Nenhuma meta criada ainda.</p>
           ) : (
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-3.5">
               {goals.slice(0, 4).map((goal) => {
                 const pct = Math.min(
                   100,
@@ -124,16 +151,11 @@ export default async function DashboardPage() {
                 )
                 return (
                   <div key={goal.id}>
-                    <div className="mb-1 flex items-center justify-between text-xs">
+                    <div className="mb-1.5 flex items-center justify-between text-xs">
                       <span className="font-medium text-foreground/70">{goal.name}</span>
-                      <span className="text-foreground/40">{pct}%</span>
+                      <span className="font-mono text-foreground/40">{pct}%</span>
                     </div>
-                    <div className="h-1.5 overflow-hidden rounded-full bg-black/5 dark:bg-white/10">
-                      <div
-                        className="h-full rounded-full"
-                        style={{ width: `${pct}%`, backgroundColor: goal.color ?? '#10B981' }}
-                      />
-                    </div>
+                    <ProgressBar value={pct} barClassName="bg-accent-purple" />
                   </div>
                 )
               })}
@@ -141,13 +163,6 @@ export default async function DashboardPage() {
           )}
         </Card>
       </div>
-
-      {totalBenefits > 0 && (
-        <Card>
-          <p className="text-xs text-foreground/50">Saldo total em benefícios (VR/VA/VT)</p>
-          <p className="mt-1 font-mono text-lg font-semibold">{fmtCurrency(totalBenefits)}</p>
-        </Card>
-      )}
     </div>
   )
 }

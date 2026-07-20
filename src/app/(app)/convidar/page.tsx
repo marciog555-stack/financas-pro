@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { Check, Copy, RefreshCw, UserPlus, Share2 } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { Check, Copy, RefreshCw, UserPlus, Share2, LogOut, User } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useHousehold } from '@/lib/household-context'
 import { Button, Card, Input, Label } from '@/components/ui'
@@ -27,7 +28,8 @@ function CopyField({ value }: { value: string }) {
 }
 
 export default function ConvidarPage() {
-  const { household, members } = useHousehold()
+  const { profile, household, members } = useHousehold()
+  const router = useRouter()
   const [inviteCode, setInviteCode] = useState(household.invite_code)
   const [regenerating, setRegenerating] = useState(false)
 
@@ -46,11 +48,30 @@ export default function ConvidarPage() {
     if (!error && data) setInviteCode(data)
   }
 
+  async function handleLogout() {
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    router.push('/login')
+    router.refresh()
+  }
+
   return (
     <div className="flex flex-col gap-5">
-      <Card>
+      <Card className="animate-fade-in-up">
+        <div className="flex items-center gap-3">
+          <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-accent-emerald/10 text-accent-emerald">
+            <User size={24} />
+          </span>
+          <div className="min-w-0">
+            <p className="truncate text-base font-semibold">{profile.name || 'Sem nome'}</p>
+            <p className="truncate text-sm text-foreground/45">{household.name}</p>
+          </div>
+        </div>
+      </Card>
+
+      <Card className="animate-fade-in-up [animation-delay:80ms]">
         <h2 className="mb-1 flex items-center gap-2 text-sm font-semibold">
-          <UserPlus size={16} className="text-emerald-500" /> Convidar para {household.name}
+          <UserPlus size={16} className="text-accent-emerald" /> Convidar para {household.name}
         </h2>
         <p className="mb-3 text-sm text-foreground/50">
           Quem abrir esse link e criar uma conta passa a ver e editar os mesmos dados que você — renda,
@@ -79,9 +100,9 @@ export default function ConvidarPage() {
         </div>
       </Card>
 
-      <Card>
+      <Card className="animate-fade-in-up [animation-delay:120ms]">
         <h2 className="mb-1 flex items-center gap-2 text-sm font-semibold">
-          <Share2 size={16} className="text-blue-500" /> Indicar o app
+          <Share2 size={16} className="text-accent-blue" /> Indicar o app
         </h2>
         <p className="mb-3 text-sm text-foreground/50">
           Quer só recomendar o Finanças Pro pra alguém? Esse link cria uma conta independente — a pessoa
@@ -91,9 +112,9 @@ export default function ConvidarPage() {
         <CopyField value={referralLink} />
       </Card>
 
-      <Card>
+      <Card className="animate-fade-in-up [animation-delay:160ms]">
         <h2 className="mb-3 text-sm font-semibold">Quem já está em {household.name}</h2>
-        <div className="flex flex-col divide-y divide-black/5 dark:divide-white/10">
+        <div className="flex flex-col divide-y divide-border">
           {members.map((m) => (
             <div key={m.id} className="py-2 text-sm">
               {m.name.trim() || 'Sem nome'}
@@ -101,6 +122,10 @@ export default function ConvidarPage() {
           ))}
         </div>
       </Card>
+
+      <Button type="button" variant="secondary" onClick={handleLogout} className="animate-fade-in-up [animation-delay:200ms]">
+        <LogOut size={16} /> Sair da conta
+      </Button>
     </div>
   )
 }
