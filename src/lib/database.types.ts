@@ -176,6 +176,8 @@ export type Database = {
           attachment_path: string | null
           created_at: string | null
           date: string
+          deductions: Json | null
+          gross_amount: number | null
           household_id: string
           id: string
           is_recurring: boolean | null
@@ -187,6 +189,8 @@ export type Database = {
           attachment_path?: string | null
           created_at?: string | null
           date: string
+          deductions?: Json | null
+          gross_amount?: number | null
           household_id: string
           id?: string
           is_recurring?: boolean | null
@@ -198,6 +202,8 @@ export type Database = {
           attachment_path?: string | null
           created_at?: string | null
           date?: string
+          deductions?: Json | null
+          gross_amount?: number | null
           household_id?: string
           id?: string
           is_recurring?: boolean | null
