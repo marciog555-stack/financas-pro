@@ -1,17 +1,21 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { Suspense, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button, Card, Input, Label } from '@/components/ui'
 import { cn } from '@/lib/cn'
-import { Users, User } from 'lucide-react'
+import { Home, Users } from 'lucide-react'
 
-export default function OnboardingPage() {
+function OnboardingForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const inviteFromLink = searchParams.get('invite') ?? ''
+
+  const [mode, setMode] = useState<'create' | 'join'>(inviteFromLink ? 'join' : 'create')
   const [name, setName] = useState('')
-  const [mode, setMode] = useState<'single' | 'couple'>('couple')
-  const [partnerName, setPartnerName] = useState('')
+  const [householdName, setHouseholdName] = useState('')
+  const [inviteCode, setInviteCode] = useState(inviteFromLink)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -20,23 +24,21 @@ export default function OnboardingPage() {
     setError(null)
     setLoading(true)
     const supabase = createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (!user) {
-      setError('Sessão expirada, faça login novamente.')
-      setLoading(false)
-      return
-    }
-    const { error } = await supabase.from('profiles').insert({
-      user_id: user.id,
-      name,
-      mode,
-      partner_name: mode === 'couple' ? partnerName : null,
-    })
+
+    const { error } =
+      mode === 'create'
+        ? await supabase.rpc('create_household', {
+            p_household_name: householdName || `Casa de ${name}`,
+            p_display_name: name,
+          })
+        : await supabase.rpc('join_household', {
+            p_invite_code: inviteCode,
+            p_display_name: name,
+          })
+
     setLoading(false)
     if (error) {
-      setError(error.message)
+      setError(mode === 'join' ? 'Código de convite inválido.' : error.message)
       return
     }
     router.push('/')
@@ -48,55 +50,67 @@ export default function OnboardingPage() {
       <Card className="w-full max-w-sm">
         <h1 className="text-lg font-semibold">Vamos começar</h1>
         <p className="mt-1 text-sm text-foreground/50">
-          Conte um pouco sobre como você quer organizar suas finanças.
+          Crie sua casa financeira ou entre em uma existente com um convite.
         </p>
+
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => setMode('create')}
+            className={cn(
+              'flex flex-col items-center gap-1.5 rounded-lg border px-3 py-3 text-sm transition-colors',
+              mode === 'create'
+                ? 'border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+                : 'border-black/10 hover:bg-black/5 dark:border-white/10 dark:hover:bg-white/5'
+            )}
+          >
+            <Home size={18} />
+            Criar nova casa
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode('join')}
+            className={cn(
+              'flex flex-col items-center gap-1.5 rounded-lg border px-3 py-3 text-sm transition-colors',
+              mode === 'join'
+                ? 'border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+                : 'border-black/10 hover:bg-black/5 dark:border-white/10 dark:hover:bg-white/5'
+            )}
+          >
+            <Users size={18} />
+            Entrar com convite
+          </button>
+        </div>
+
         <form onSubmit={handleSubmit} className="mt-5 flex flex-col gap-3">
           <div>
             <Label htmlFor="name">Seu nome</Label>
             <Input id="name" required value={name} onChange={(e) => setName(e.target.value)} />
           </div>
 
-          <div>
-            <Label>Como você vai usar o app?</Label>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setMode('single')}
-                className={cn(
-                  'flex flex-col items-center gap-1.5 rounded-lg border px-3 py-3 text-sm transition-colors',
-                  mode === 'single'
-                    ? 'border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
-                    : 'border-black/10 hover:bg-black/5 dark:border-white/10 dark:hover:bg-white/5'
-                )}
-              >
-                <User size={18} />
-                Individual
-              </button>
-              <button
-                type="button"
-                onClick={() => setMode('couple')}
-                className={cn(
-                  'flex flex-col items-center gap-1.5 rounded-lg border px-3 py-3 text-sm transition-colors',
-                  mode === 'couple'
-                    ? 'border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
-                    : 'border-black/10 hover:bg-black/5 dark:border-white/10 dark:hover:bg-white/5'
-                )}
-              >
-                <Users size={18} />
-                Casal
-              </button>
-            </div>
-          </div>
-
-          {mode === 'couple' && (
+          {mode === 'create' ? (
             <div>
-              <Label htmlFor="partnerName">Nome do parceiro(a)</Label>
+              <Label htmlFor="householdName">Nome da casa (opcional)</Label>
               <Input
-                id="partnerName"
-                required
-                value={partnerName}
-                onChange={(e) => setPartnerName(e.target.value)}
+                id="householdName"
+                placeholder={name ? `Casa de ${name}` : 'Ex: Casa do Marcio e Michelle'}
+                value={householdName}
+                onChange={(e) => setHouseholdName(e.target.value)}
               />
+            </div>
+          ) : (
+            <div>
+              <Label htmlFor="inviteCode">Código de convite</Label>
+              <Input
+                id="inviteCode"
+                required
+                placeholder="Ex: A1B2C3D4"
+                value={inviteCode}
+                onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
+              />
+              <p className="mt-1 text-xs text-foreground/40">
+                Peça o link ou código de convite para quem já tem a conta.
+              </p>
             </div>
           )}
 
@@ -107,5 +121,13 @@ export default function OnboardingPage() {
         </form>
       </Card>
     </div>
+  )
+}
+
+export default function OnboardingPage() {
+  return (
+    <Suspense>
+      <OnboardingForm />
+    </Suspense>
   )
 }

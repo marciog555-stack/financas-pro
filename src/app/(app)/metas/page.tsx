@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Plus, Trash2, RefreshCw } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { useProfile } from '@/lib/profile-context'
+import { useHousehold } from '@/lib/household-context'
 import { Button, Card, EmptyState, Input, Label } from '@/components/ui'
 import { fmtCurrency, fmtDate } from '@/lib/format'
 import { GOAL_COLORS } from '@/lib/categories'
@@ -13,7 +13,7 @@ import type { Tables } from '@/lib/database.types'
 type Goal = Tables<'goals'>
 
 export default function MetasPage() {
-  const profile = useProfile()
+  const { household } = useHousehold()
   const supabase = createClient()
   const [goals, setGoals] = useState<Goal[]>([])
   const [loading, setLoading] = useState(true)
@@ -31,7 +31,7 @@ export default function MetasPage() {
     const { data } = await supabase
       .from('goals')
       .select('*')
-      .eq('profile_id', profile.id)
+      .eq('household_id', household.id)
       .order('created_at', { ascending: false })
     setGoals(data ?? [])
     setLoading(false)
@@ -47,7 +47,7 @@ export default function MetasPage() {
     if (!form.name || !form.targetAmount) return
     setSaving(true)
     const { error } = await supabase.from('goals').insert({
-      profile_id: profile.id,
+      household_id: household.id,
       name: form.name,
       target_amount: Number(form.targetAmount),
       current_amount: Number(form.currentAmount || 0),

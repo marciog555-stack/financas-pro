@@ -16,34 +16,41 @@ export type Database = {
         Row: {
           balance: number
           created_at: string | null
+          household_id: string
           id: string
           name: string
-          owner: string | null
-          profile_id: string | null
+          owner_profile_id: string | null
           type: string
         }
         Insert: {
           balance?: number
           created_at?: string | null
+          household_id: string
           id?: string
           name: string
-          owner?: string | null
-          profile_id?: string | null
+          owner_profile_id?: string | null
           type: string
         }
         Update: {
           balance?: number
           created_at?: string | null
+          household_id?: string
           id?: string
           name?: string
-          owner?: string | null
-          profile_id?: string | null
+          owner_profile_id?: string | null
           type?: string
         }
         Relationships: [
           {
-            foreignKeyName: "benefit_cards_profile_id_fkey"
-            columns: ["profile_id"]
+            foreignKeyName: "benefit_cards_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "benefit_cards_owner_profile_id_fkey"
+            columns: ["owner_profile_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -56,38 +63,45 @@ export type Database = {
           category: string
           created_at: string | null
           due_date: string | null
+          household_id: string
           id: string
           is_paid: boolean | null
           name: string
-          owner: string | null
-          profile_id: string | null
+          owner_profile_id: string | null
         }
         Insert: {
           amount: number
           category: string
           created_at?: string | null
           due_date?: string | null
+          household_id: string
           id?: string
           is_paid?: boolean | null
           name: string
-          owner?: string | null
-          profile_id?: string | null
+          owner_profile_id?: string | null
         }
         Update: {
           amount?: number
           category?: string
           created_at?: string | null
           due_date?: string | null
+          household_id?: string
           id?: string
           is_paid?: boolean | null
           name?: string
-          owner?: string | null
-          profile_id?: string | null
+          owner_profile_id?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "expenses_profile_id_fkey"
-            columns: ["profile_id"]
+            foreignKeyName: "expenses_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_owner_profile_id_fkey"
+            columns: ["owner_profile_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -99,9 +113,9 @@ export type Database = {
           color: string | null
           created_at: string | null
           current_amount: number
+          household_id: string
           id: string
           name: string
-          profile_id: string | null
           target_amount: number
           target_date: string | null
         }
@@ -109,9 +123,9 @@ export type Database = {
           color?: string | null
           created_at?: string | null
           current_amount?: number
+          household_id: string
           id?: string
           name: string
-          profile_id?: string | null
           target_amount: number
           target_date?: string | null
         }
@@ -119,21 +133,42 @@ export type Database = {
           color?: string | null
           created_at?: string | null
           current_amount?: number
+          household_id?: string
           id?: string
           name?: string
-          profile_id?: string | null
           target_amount?: number
           target_date?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "goals_profile_id_fkey"
-            columns: ["profile_id"]
+            foreignKeyName: "goals_household_id_fkey"
+            columns: ["household_id"]
             isOneToOne: false
-            referencedRelation: "profiles"
+            referencedRelation: "households"
             referencedColumns: ["id"]
           },
         ]
+      }
+      households: {
+        Row: {
+          created_at: string
+          id: string
+          invite_code: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          invite_code: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          invite_code?: string
+          name?: string
+        }
+        Relationships: []
       }
       incomes: {
         Row: {
@@ -141,10 +176,10 @@ export type Database = {
           attachment_path: string | null
           created_at: string | null
           date: string
+          household_id: string
           id: string
           is_recurring: boolean | null
-          owner: string | null
-          profile_id: string | null
+          owner_profile_id: string | null
           source: string
         }
         Insert: {
@@ -152,10 +187,10 @@ export type Database = {
           attachment_path?: string | null
           created_at?: string | null
           date: string
+          household_id: string
           id?: string
           is_recurring?: boolean | null
-          owner?: string | null
-          profile_id?: string | null
+          owner_profile_id?: string | null
           source: string
         }
         Update: {
@@ -163,16 +198,23 @@ export type Database = {
           attachment_path?: string | null
           created_at?: string | null
           date?: string
+          household_id?: string
           id?: string
           is_recurring?: boolean | null
-          owner?: string | null
-          profile_id?: string | null
+          owner_profile_id?: string | null
           source?: string
         }
         Relationships: [
           {
-            foreignKeyName: "incomes_profile_id_fkey"
-            columns: ["profile_id"]
+            foreignKeyName: "incomes_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "incomes_owner_profile_id_fkey"
+            columns: ["owner_profile_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -183,12 +225,12 @@ export type Database = {
         Row: {
           attachment_path: string | null
           created_at: string | null
+          household_id: string
           id: string
           interest_rate: number
           monthly_payment: number
           name: string
-          owner: string | null
-          profile_id: string | null
+          owner_profile_id: string | null
           remaining_installments: number
           total_amount: number
           total_installments: number
@@ -196,12 +238,12 @@ export type Database = {
         Insert: {
           attachment_path?: string | null
           created_at?: string | null
+          household_id: string
           id?: string
           interest_rate: number
           monthly_payment: number
           name: string
-          owner?: string | null
-          profile_id?: string | null
+          owner_profile_id?: string | null
           remaining_installments: number
           total_amount: number
           total_installments: number
@@ -209,20 +251,27 @@ export type Database = {
         Update: {
           attachment_path?: string | null
           created_at?: string | null
+          household_id?: string
           id?: string
           interest_rate?: number
           monthly_payment?: number
           name?: string
-          owner?: string | null
-          profile_id?: string | null
+          owner_profile_id?: string | null
           remaining_installments?: number
           total_amount?: number
           total_installments?: number
         }
         Relationships: [
           {
-            foreignKeyName: "loans_profile_id_fkey"
-            columns: ["profile_id"]
+            foreignKeyName: "loans_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loans_owner_profile_id_fkey"
+            columns: ["owner_profile_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -232,39 +281,59 @@ export type Database = {
       profiles: {
         Row: {
           created_at: string | null
+          household_id: string | null
           id: string
-          mode: string | null
           name: string
-          partner_name: string | null
           updated_at: string | null
           user_id: string | null
         }
         Insert: {
           created_at?: string | null
+          household_id?: string | null
           id?: string
-          mode?: string | null
           name: string
-          partner_name?: string | null
           updated_at?: string | null
           user_id?: string | null
         }
         Update: {
           created_at?: string | null
+          household_id?: string | null
           id?: string
-          mode?: string | null
           name?: string
-          partner_name?: string | null
           updated_at?: string | null
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      create_household: {
+        Args: { p_display_name: string; p_household_name: string }
+        Returns: string
+      }
+      is_household_member: {
+        Args: { p_household_id: string }
+        Returns: boolean
+      }
+      join_household: {
+        Args: { p_display_name: string; p_invite_code: string }
+        Returns: string
+      }
+      regenerate_invite_code: {
+        Args: { p_household_id: string }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never

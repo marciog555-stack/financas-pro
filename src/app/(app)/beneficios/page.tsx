@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Plus, Trash2, RefreshCw } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { useProfile, ownerLabel } from '@/lib/profile-context'
+import { useHousehold, ownerLabel } from '@/lib/household-context'
 import { OwnerSelect } from '@/components/owner-select'
 import { Button, Card, EmptyState, Input, Label, Select } from '@/components/ui'
 import { fmtCurrency } from '@/lib/format'
@@ -13,7 +13,7 @@ import type { Tables } from '@/lib/database.types'
 type Benefit = Tables<'benefit_cards'>
 
 export default function BeneficiosPage() {
-  const profile = useProfile()
+  const { profile, household, members } = useHousehold()
   const supabase = createClient()
   const [benefits, setBenefits] = useState<Benefit[]>([])
   const [loading, setLoading] = useState(true)
@@ -22,7 +22,7 @@ export default function BeneficiosPage() {
     name: '',
     type: 'VR' as BenefitType,
     balance: '',
-    owner: 'me',
+    owner: profile.id,
   })
 
   async function load() {
@@ -30,7 +30,7 @@ export default function BeneficiosPage() {
     const { data } = await supabase
       .from('benefit_cards')
       .select('*')
-      .eq('profile_id', profile.id)
+      .eq('household_id', household.id)
       .order('created_at', { ascending: false })
     setBenefits(data ?? [])
     setLoading(false)
@@ -46,15 +46,15 @@ export default function BeneficiosPage() {
     if (!form.name) return
     setSaving(true)
     const { error } = await supabase.from('benefit_cards').insert({
-      profile_id: profile.id,
+      household_id: household.id,
       name: form.name,
       type: form.type,
       balance: Number(form.balance || 0),
-      owner: form.owner,
+      owner_profile_id: form.owner || null,
     })
     setSaving(false)
     if (!error) {
-      setForm({ name: '', type: 'VR', balance: '', owner: 'me' })
+      setForm({ name: '', type: 'VR', balance: '', owner: profile.id })
       load()
     }
   }
@@ -135,7 +135,7 @@ export default function BeneficiosPage() {
                   <div>
                     <p className="text-sm font-medium">{benefit.name}</p>
                     <p className="text-xs text-foreground/40">
-                      {BENEFIT_TYPES[benefit.type as BenefitType] ?? benefit.type} · {ownerLabel(profile, benefit.owner)}
+                      {BENEFIT_TYPES[benefit.type as BenefitType] ?? benefit.type} · {ownerLabel(members, benefit.owner_profile_id)}
                     </p>
                   </div>
                   <button

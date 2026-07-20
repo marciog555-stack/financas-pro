@@ -21,13 +21,15 @@ export default async function DashboardPage() {
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10)
   const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10)
 
+  const householdId = profile!.household_id!
+
   const [{ data: incomes }, { data: expenses }, { data: benefits }, { data: loans }, { data: goals }] =
     await Promise.all([
-      supabase.from('incomes').select('*').eq('profile_id', profile!.id).gte('date', monthStart).lte('date', monthEnd),
-      supabase.from('expenses').select('*').eq('profile_id', profile!.id).gte('due_date', monthStart).lte('due_date', monthEnd),
-      supabase.from('benefit_cards').select('*').eq('profile_id', profile!.id),
-      supabase.from('loans').select('*').eq('profile_id', profile!.id),
-      supabase.from('goals').select('*').eq('profile_id', profile!.id),
+      supabase.from('incomes').select('*').eq('household_id', householdId).gte('date', monthStart).lte('date', monthEnd),
+      supabase.from('expenses').select('*').eq('household_id', householdId).gte('due_date', monthStart).lte('due_date', monthEnd),
+      supabase.from('benefit_cards').select('*').eq('household_id', householdId),
+      supabase.from('loans').select('*').eq('household_id', householdId),
+      supabase.from('goals').select('*').eq('household_id', householdId),
     ])
 
   const totalIncome = (incomes ?? []).reduce((s, i) => s + Number(i.amount), 0)

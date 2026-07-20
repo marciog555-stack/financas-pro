@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Plus, Trash2, RefreshCw, CheckCircle2, Circle } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { useProfile, ownerLabel } from '@/lib/profile-context'
+import { useHousehold, ownerLabel } from '@/lib/household-context'
 import { OwnerSelect } from '@/components/owner-select'
 import { Button, Card, EmptyState, Input, Label, Select, Badge } from '@/components/ui'
 import { fmtCurrency, fmtDate, todayISO } from '@/lib/format'
@@ -13,7 +13,7 @@ import type { Tables } from '@/lib/database.types'
 type Expense = Tables<'expenses'>
 
 export default function DespesasPage() {
-  const profile = useProfile()
+  const { household, members } = useHousehold()
   const supabase = createClient()
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [loading, setLoading] = useState(true)
@@ -23,7 +23,7 @@ export default function DespesasPage() {
     amount: '',
     dueDate: todayISO(),
     category: 'other' as ExpenseCategory,
-    owner: 'shared',
+    owner: '',
   })
 
   async function load() {
@@ -31,7 +31,7 @@ export default function DespesasPage() {
     const { data } = await supabase
       .from('expenses')
       .select('*')
-      .eq('profile_id', profile.id)
+      .eq('household_id', household.id)
       .order('due_date', { ascending: true })
     setExpenses(data ?? [])
     setLoading(false)
@@ -47,17 +47,17 @@ export default function DespesasPage() {
     if (!form.name || !form.amount) return
     setSaving(true)
     const { error } = await supabase.from('expenses').insert({
-      profile_id: profile.id,
+      household_id: household.id,
       name: form.name,
       amount: Number(form.amount),
       due_date: form.dueDate,
       category: form.category,
-      owner: form.owner,
+      owner_profile_id: form.owner || null,
       is_paid: false,
     })
     setSaving(false)
     if (!error) {
-      setForm({ name: '', amount: '', dueDate: todayISO(), category: 'other', owner: 'shared' })
+      setForm({ name: '', amount: '', dueDate: todayISO(), category: 'other', owner: '' })
       load()
     }
   }
@@ -175,7 +175,7 @@ export default function DespesasPage() {
                       {cat.emoji} {expense.name}
                     </p>
                     <p className="text-xs text-foreground/40">
-                      Vence {fmtDate(expense.due_date)} · {ownerLabel(profile, expense.owner)}
+                      Vence {fmtDate(expense.due_date)} · {ownerLabel(members, expense.owner_profile_id)}
                     </p>
                   </div>
                   {!expense.is_paid && <Badge tone="warning">Pendente</Badge>}

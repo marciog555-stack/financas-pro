@@ -1,14 +1,16 @@
 'use client'
 
 import Link from 'next/link'
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { Suspense, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button, Card, Input, Label } from '@/components/ui'
 import { Wallet } from 'lucide-react'
 
-export default function SignupPage() {
+function SignupForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const invite = searchParams.get('invite')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -27,7 +29,7 @@ export default function SignupPage() {
       return
     }
     if (data.session) {
-      router.push('/onboarding')
+      router.push(invite ? `/onboarding?invite=${invite}` : '/onboarding')
       router.refresh()
     } else {
       setDone(true)
@@ -42,7 +44,10 @@ export default function SignupPage() {
           <p className="mt-2 text-sm text-foreground/50">
             Enviamos um link de confirmação para {email}. Depois de confirmar, faça login.
           </p>
-          <Link href="/login" className="mt-4 inline-block text-sm font-medium text-emerald-600 hover:underline">
+          <Link
+            href={invite ? `/login?invite=${invite}` : '/login'}
+            className="mt-4 inline-block text-sm font-medium text-emerald-600 hover:underline"
+          >
             Ir para o login
           </Link>
         </Card>
@@ -58,7 +63,9 @@ export default function SignupPage() {
             <Wallet size={20} />
           </div>
           <h1 className="text-lg font-semibold">Criar conta</h1>
-          <p className="text-sm text-foreground/50">Comece a organizar suas finanças</p>
+          <p className="text-sm text-foreground/50">
+            {invite ? 'Você foi convidado para uma casa financeira' : 'Comece a organizar suas finanças'}
+          </p>
         </div>
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
           <div>
@@ -91,11 +98,22 @@ export default function SignupPage() {
         </form>
         <p className="mt-4 text-center text-xs text-foreground/50">
           Já tem conta?{' '}
-          <Link href="/login" className="font-medium text-emerald-600 hover:underline">
+          <Link
+            href={invite ? `/login?invite=${invite}` : '/login'}
+            className="font-medium text-emerald-600 hover:underline"
+          >
             Entrar
           </Link>
         </p>
       </Card>
     </div>
+  )
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense>
+      <SignupForm />
+    </Suspense>
   )
 }
