@@ -23,6 +23,7 @@ export default function DespesasPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [sheetOpen, setSheetOpen] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
   const [form, setForm] = useState({
     name: '',
     amount: '',
@@ -59,6 +60,7 @@ export default function DespesasPage() {
     e.preventDefault()
     if (!form.name || !form.amount) return
     setSaving(true)
+    setSaveError(null)
     const { error } = await supabase.from('expenses').insert({
       household_id: household.id,
       name: form.name,
@@ -69,11 +71,13 @@ export default function DespesasPage() {
       is_paid: false,
     })
     setSaving(false)
-    if (!error) {
-      setForm({ name: '', amount: '', dueDate: todayISO(), category: 'other', owner: '' })
-      setSheetOpen(false)
-      load()
+    if (error) {
+      setSaveError('Não foi possível salvar. Verifique sua conexão e tente novamente.')
+      return
     }
+    setForm({ name: '', amount: '', dueDate: todayISO(), category: 'other', owner: '' })
+    setSheetOpen(false)
+    load()
   }
 
   async function togglePaid(expense: Expense) {
@@ -205,6 +209,7 @@ export default function DespesasPage() {
             <Label>Dono</Label>
             <OwnerSelect value={form.owner} onChange={(owner) => setForm({ ...form, owner })} includeShared />
           </div>
+          {saveError && <p className="text-xs text-accent-red">{saveError}</p>}
           <Button type="submit" disabled={saving} className="mt-2">
             <Plus size={16} /> Adicionar
           </Button>

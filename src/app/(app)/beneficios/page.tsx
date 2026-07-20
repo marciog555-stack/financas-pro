@@ -23,6 +23,7 @@ export default function BeneficiosPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [sheetOpen, setSheetOpen] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
   const [form, setForm] = useState({
     name: '',
     type: 'VR' as BenefitType,
@@ -58,6 +59,7 @@ export default function BeneficiosPage() {
     e.preventDefault()
     if (!form.name) return
     setSaving(true)
+    setSaveError(null)
     const { error } = await supabase.from('benefit_cards').insert({
       household_id: household.id,
       name: form.name,
@@ -66,11 +68,13 @@ export default function BeneficiosPage() {
       owner_profile_id: form.owner || null,
     })
     setSaving(false)
-    if (!error) {
-      setForm({ name: '', type: 'VR', balance: '', owner: profile.id })
-      setSheetOpen(false)
-      load()
+    if (error) {
+      setSaveError('Não foi possível salvar. Verifique sua conexão e tente novamente.')
+      return
     }
+    setForm({ name: '', type: 'VR', balance: '', owner: profile.id })
+    setSheetOpen(false)
+    load()
   }
 
   async function handleDelete(id: string) {
@@ -173,6 +177,7 @@ export default function BeneficiosPage() {
             <Label>Dono</Label>
             <OwnerSelect value={form.owner} onChange={(owner) => setForm({ ...form, owner })} />
           </div>
+          {saveError && <p className="text-xs text-accent-red">{saveError}</p>}
           <Button type="submit" disabled={saving} className="mt-2">
             <Plus size={16} /> Adicionar
           </Button>

@@ -40,6 +40,7 @@ export default function RendaPage() {
   const [extractError, setExtractError] = useState<string | null>(null)
   const [grossAmount, setGrossAmount] = useState('')
   const [deductions, setDeductions] = useState<Deduction[]>([])
+  const [saveError, setSaveError] = useState<string | null>(null)
   const [form, setForm] = useState({
     source: '',
     amount: '',
@@ -101,6 +102,7 @@ export default function RendaPage() {
     e.preventDefault()
     if (!form.source || !form.amount) return
     setSaving(true)
+    setSaveError(null)
     let attachmentPath: string | null = null
     if (attachment && profile.user_id) {
       attachmentPath = await uploadAttachment(supabase, profile.user_id, 'incomes', attachment)
@@ -117,14 +119,16 @@ export default function RendaPage() {
       deductions: deductions.length > 0 ? deductions : null,
     })
     setSaving(false)
-    if (!error) {
-      setForm({ source: '', amount: '', date: todayISO(), isRecurring: false, owner: profile.id })
-      setAttachment(null)
-      setGrossAmount('')
-      setDeductions([])
-      setSheetOpen(false)
-      load()
+    if (error) {
+      setSaveError('Não foi possível salvar. Verifique sua conexão e tente novamente.')
+      return
     }
+    setForm({ source: '', amount: '', date: todayISO(), isRecurring: false, owner: profile.id })
+    setAttachment(null)
+    setGrossAmount('')
+    setDeductions([])
+    setSheetOpen(false)
+    load()
   }
 
   async function handleDelete(id: string) {
@@ -296,6 +300,7 @@ export default function RendaPage() {
             />
             Recorrente
           </label>
+          {saveError && <p className="text-xs text-accent-red">{saveError}</p>}
           <Button type="submit" disabled={saving} className="mt-2">
             <Plus size={16} /> Adicionar
           </Button>
