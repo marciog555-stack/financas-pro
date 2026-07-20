@@ -1,12 +1,16 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Plus, Trash2, RefreshCw } from 'lucide-react'
+import { Plus, Trash2, RefreshCw, Sparkles, TrendingDown, Zap } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useProfile, ownerLabel } from '@/lib/profile-context'
 import { OwnerSelect } from '@/components/owner-select'
+import { AttachmentField } from '@/components/attachment-field'
+import { AttachmentLink } from '@/components/attachment-link'
 import { Button, Card, EmptyState, Input, Label } from '@/components/ui'
 import { fmtCurrency } from '@/lib/format'
+import { uploadAttachment } from '@/lib/attachments'
+import { loanPayoffRecommendation, remainingBalance } from '@/lib/loan-strategy'
 import type { Tables } from '@/lib/database.types'
 
 type Loan = Tables<'loans'>
@@ -17,6 +21,9 @@ export default function EmprestimosPage() {
   const [loans, setLoans] = useState<Loan[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [attachment, setAttachment] = useState<File | null>(null)
+  const [extracting, setExtracting] = useState(false)
+  const [extractError, setExtractError] = useState<string | null>(null)
   const [form, setForm] = useState({
     name: '',
     totalAmount: '',
@@ -43,10 +50,40 @@ export default function EmprestimosPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  async function handleExtract() {
+    if (!attachment) return
+    setExtracting(true)
+    setExtractError(null)
+    try {
+      const body = new FormData()
+      body.append('file', attachment)
+      const res = await fetch('/api/loans/extract', { method: 'POST', body })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Falha ao extrair dados')
+      setForm((f) => ({
+        ...f,
+        name: data.name ?? f.name,
+        totalAmount: data.total_amount != null ? String(data.total_amount) : f.totalAmount,
+        interestRate: data.interest_rate != null ? String(data.interest_rate) : f.interestRate,
+        totalInstallments:
+          data.total_installments != null ? String(data.total_installments) : f.totalInstallments,
+        monthlyPayment: data.monthly_payment != null ? String(data.monthly_payment) : f.monthlyPayment,
+      }))
+    } catch (err) {
+      setExtractError(err instanceof Error ? err.message : 'Falha ao extrair dados')
+    } finally {
+      setExtracting(false)
+    }
+  }
+
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault()
     if (!form.name || !form.totalAmount || !form.totalInstallments || !form.monthlyPayment) return
     setSaving(true)
+    let attachmentPath: string | null = null
+    if (attachment && profile.user_id) {
+      attachmentPath = await uploadAttachment(supabase, profile.user_id, 'loans', attachment)
+    }
     const { error } = await supabase.from('loans').insert({
       profile_id: profile.id,
       name: form.name,
@@ -56,6 +93,7 @@ export default function EmprestimosPage() {
       remaining_installments: Number(form.remainingInstallments || form.totalInstallments),
       monthly_payment: Number(form.monthlyPayment),
       owner: form.owner,
+      attachment_path: attachmentPath,
     })
     setSaving(false)
     if (!error) {
@@ -68,6 +106,7 @@ export default function EmprestimosPage() {
         monthlyPayment: '',
         owner: 'me',
       })
+      setAttachment(null)
       load()
     }
   }
@@ -77,17 +116,69 @@ export default function EmprestimosPage() {
     await supabase.from('loans').delete().eq('id', id)
   }
 
-  const totalOwed = loans.reduce(
-    (sum, l) => sum + Number(l.monthly_payment) * l.remaining_installments,
-    0
-  )
+  const totalOwed = loans.reduce((sum, l) => sum + remainingBalance(l), 0)
   const totalMonthly = loans.reduce((sum, l) => sum + Number(l.monthly_payment), 0)
+  const recommendation = loanPayoffRecommendation(loans)
 
   return (
     <div className="flex flex-col gap-5">
+      {recommendation && (
+        <Card>
+          <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold">
+            <Zap size={16} className="text-emerald-500" /> Recomendação de quitação
+          </h2>
+          {recommendation.sameLoan ? (
+            <p className="text-sm text-foreground/70">
+              Priorize{' '}
+              <span className="font-semibold">{recommendation.avalanche.name}</span> — é o empréstimo
+              com maior juros <span className="text-foreground/40">e</span> o menor saldo devedor, então
+              quitá-lo primeiro economiza mais juros e libera espaço no orçamento mais rápido.
+            </p>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-lg border border-black/5 p-3 dark:border-white/10">
+                <div className="flex items-center gap-2 text-xs font-medium text-foreground/50">
+                  <TrendingDown size={14} className="text-emerald-500" /> Economiza mais juros
+                </div>
+                <p className="mt-1 text-sm font-semibold">{recommendation.avalanche.name}</p>
+                <p className="text-xs text-foreground/40">
+                  {Number(recommendation.avalanche.interest_rate)}% a.m. — a maior taxa entre seus
+                  empréstimos
+                </p>
+              </div>
+              <div className="rounded-lg border border-black/5 p-3 dark:border-white/10">
+                <div className="flex items-center gap-2 text-xs font-medium text-foreground/50">
+                  <Zap size={14} className="text-amber-500" /> Libera o orçamento mais rápido
+                </div>
+                <p className="mt-1 text-sm font-semibold">{recommendation.snowball.name}</p>
+                <p className="text-xs text-foreground/40">
+                  {fmtCurrency(remainingBalance(recommendation.snowball))} restantes — o menor saldo
+                  devedor
+                </p>
+              </div>
+            </div>
+          )}
+          <p className="mt-3 text-xs text-foreground/40">
+            Cálculo automático com base nos dados cadastrados abaixo (sem custo de IA).
+          </p>
+        </Card>
+      )}
+
       <Card>
         <h2 className="mb-3 text-sm font-semibold">Novo empréstimo / parcelamento</h2>
         <form onSubmit={handleAdd} className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <div className="col-span-2 sm:col-span-3">
+            <AttachmentField label="Contrato (opcional)" file={attachment} onChange={setAttachment} />
+            {attachment && (
+              <div className="mt-2 flex items-center gap-2">
+                <Button type="button" variant="secondary" size="sm" onClick={handleExtract} disabled={extracting}>
+                  <Sparkles size={14} />
+                  {extracting ? 'Lendo contrato…' : 'Preencher com IA'}
+                </Button>
+                {extractError && <span className="text-xs text-red-500">{extractError}</span>}
+              </div>
+            )}
+          </div>
           <div className="col-span-2 sm:col-span-3">
             <Label>Nome</Label>
             <Input
@@ -190,6 +281,7 @@ export default function EmprestimosPage() {
                         {loan.total_installments - loan.remaining_installments}/{loan.total_installments} parcelas ·{' '}
                         {Number(loan.interest_rate)}% a.m. · {ownerLabel(profile, loan.owner)}
                       </p>
+                      {loan.attachment_path && <AttachmentLink path={loan.attachment_path} />}
                     </div>
                     <span className="font-mono text-sm font-semibold">
                       {fmtCurrency(Number(loan.monthly_payment))}/mês
