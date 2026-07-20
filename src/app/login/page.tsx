@@ -5,6 +5,7 @@ import { Suspense, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button, Card, Input, Label } from '@/components/ui'
+import { PasswordInput } from '@/components/password-input'
 import { Wallet } from 'lucide-react'
 
 function LoginForm() {
@@ -56,10 +57,17 @@ function LoginForm() {
             />
           </div>
           <div>
-            <Label htmlFor="password">Senha</Label>
-            <Input
+            <div className="flex items-center justify-between">
+              <Label htmlFor="password" className="mb-1.5">Senha</Label>
+              <Link
+                href={invite ? `/esqueci-senha?invite=${invite}` : '/esqueci-senha'}
+                className="mb-1.5 text-xs font-medium text-accent-emerald hover:underline"
+              >
+                Esqueceu a senha?
+              </Link>
+            </div>
+            <PasswordInput
               id="password"
-              type="password"
               required
               autoComplete="current-password"
               value={password}
