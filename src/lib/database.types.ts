@@ -138,6 +138,7 @@ export type Database = {
       incomes: {
         Row: {
           amount: number
+          attachment_path: string | null
           created_at: string | null
           date: string
           id: string
@@ -148,6 +149,7 @@ export type Database = {
         }
         Insert: {
           amount: number
+          attachment_path?: string | null
           created_at?: string | null
           date: string
           id?: string
@@ -158,6 +160,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          attachment_path?: string | null
           created_at?: string | null
           date?: string
           id?: string
@@ -178,6 +181,7 @@ export type Database = {
       }
       loans: {
         Row: {
+          attachment_path: string | null
           created_at: string | null
           id: string
           interest_rate: number
@@ -190,6 +194,7 @@ export type Database = {
           total_installments: number
         }
         Insert: {
+          attachment_path?: string | null
           created_at?: string | null
           id?: string
           interest_rate: number
@@ -202,6 +207,7 @@ export type Database = {
           total_installments: number
         }
         Update: {
+          attachment_path?: string | null
           created_at?: string | null
           id?: string
           interest_rate?: number

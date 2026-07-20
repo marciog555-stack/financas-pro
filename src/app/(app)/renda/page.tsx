@@ -5,8 +5,11 @@ import { Plus, Trash2, RefreshCw } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useProfile, ownerLabel } from '@/lib/profile-context'
 import { OwnerSelect } from '@/components/owner-select'
+import { AttachmentField } from '@/components/attachment-field'
+import { AttachmentLink } from '@/components/attachment-link'
 import { Button, Card, EmptyState, Input, Label } from '@/components/ui'
 import { fmtCurrency, fmtDate, todayISO } from '@/lib/format'
+import { uploadAttachment } from '@/lib/attachments'
 import type { Tables } from '@/lib/database.types'
 
 type Income = Tables<'incomes'>
@@ -17,6 +20,7 @@ export default function RendaPage() {
   const [incomes, setIncomes] = useState<Income[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [attachment, setAttachment] = useState<File | null>(null)
   const [form, setForm] = useState({
     source: '',
     amount: '',
@@ -45,6 +49,10 @@ export default function RendaPage() {
     e.preventDefault()
     if (!form.source || !form.amount) return
     setSaving(true)
+    let attachmentPath: string | null = null
+    if (attachment && profile.user_id) {
+      attachmentPath = await uploadAttachment(supabase, profile.user_id, 'incomes', attachment)
+    }
     const { error } = await supabase.from('incomes').insert({
       profile_id: profile.id,
       source: form.source,
@@ -52,10 +60,12 @@ export default function RendaPage() {
       date: form.date,
       is_recurring: form.isRecurring,
       owner: form.owner,
+      attachment_path: attachmentPath,
     })
     setSaving(false)
     if (!error) {
       setForm({ source: '', amount: '', date: todayISO(), isRecurring: false, owner: 'me' })
+      setAttachment(null)
       load()
     }
   }
@@ -106,7 +116,10 @@ export default function RendaPage() {
             <Label>Dono</Label>
             <OwnerSelect value={form.owner} onChange={(owner) => setForm({ ...form, owner })} />
           </div>
-          <div className="col-span-2 flex items-end gap-3 sm:col-span-5">
+          <div className="col-span-2 sm:col-span-2">
+            <AttachmentField label="Contracheque (opcional)" file={attachment} onChange={setAttachment} />
+          </div>
+          <div className="col-span-2 flex items-end gap-3 sm:col-span-3">
             <label className="flex items-center gap-2 text-sm text-foreground/70">
               <input
                 type="checkbox"
@@ -143,6 +156,7 @@ export default function RendaPage() {
                     {fmtDate(income.date)} · {ownerLabel(profile, income.owner)}
                     {income.is_recurring ? ' · recorrente' : ''}
                   </p>
+                  {income.attachment_path && <AttachmentLink path={income.attachment_path} />}
                 </div>
                 <span className="font-mono text-sm font-semibold text-emerald-600">
                   {fmtCurrency(Number(income.amount))}

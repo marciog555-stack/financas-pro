@@ -31,6 +31,11 @@ export async function middleware(request: NextRequest) {
     request.nextUrl.pathname.startsWith('/signup')
   const isPublicAsset = request.nextUrl.pathname.startsWith('/_next') ||
     request.nextUrl.pathname.startsWith('/favicon')
+  const isApiRoute = request.nextUrl.pathname.startsWith('/api')
+
+  if (!user && isApiRoute) {
+    return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+  }
 
   if (!user && !isAuthRoute && !isPublicAsset) {
     const url = request.nextUrl.clone()
