@@ -221,10 +221,62 @@ export type Database = {
           },
         ]
       }
+      loan_installments: {
+        Row: {
+          amount: number
+          created_at: string
+          due_date: string
+          household_id: string
+          id: string
+          is_paid: boolean
+          loan_id: string
+          number: number
+          paid_date: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          due_date: string
+          household_id: string
+          id?: string
+          is_paid?: boolean
+          loan_id: string
+          number: number
+          paid_date?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          due_date?: string
+          household_id?: string
+          id?: string
+          is_paid?: boolean
+          loan_id?: string
+          number?: number
+          paid_date?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loan_installments_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loan_installments_loan_id_fkey"
+            columns: ["loan_id"]
+            isOneToOne: false
+            referencedRelation: "loans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       loans: {
         Row: {
           attachment_path: string | null
           created_at: string | null
+          first_due_date: string
           household_id: string
           id: string
           interest_rate: number
@@ -238,6 +290,7 @@ export type Database = {
         Insert: {
           attachment_path?: string | null
           created_at?: string | null
+          first_due_date?: string
           household_id: string
           id?: string
           interest_rate: number
@@ -251,6 +304,7 @@ export type Database = {
         Update: {
           attachment_path?: string | null
           created_at?: string | null
+          first_due_date?: string
           household_id?: string
           id?: string
           interest_rate?: number

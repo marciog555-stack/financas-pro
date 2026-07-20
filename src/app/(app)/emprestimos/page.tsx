@@ -1,14 +1,14 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Plus, Trash2, RefreshCw, Sparkles, TrendingDown, Zap } from 'lucide-react'
+import { Plus, RefreshCw, Sparkles, TrendingDown, Zap } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { useHousehold, ownerLabel } from '@/lib/household-context'
+import { useHousehold } from '@/lib/household-context'
 import { OwnerSelect } from '@/components/owner-select'
 import { AttachmentField } from '@/components/attachment-field'
-import { AttachmentLink } from '@/components/attachment-link'
+import { LoanRow } from '@/components/loan-row'
 import { Button, Card, EmptyState, Input, Label } from '@/components/ui'
-import { fmtCurrency } from '@/lib/format'
+import { fmtCurrency, todayISO } from '@/lib/format'
 import { uploadAttachment } from '@/lib/attachments'
 import { loanPayoffRecommendation, remainingBalance } from '@/lib/loan-strategy'
 import type { Tables } from '@/lib/database.types'
@@ -16,7 +16,7 @@ import type { Tables } from '@/lib/database.types'
 type Loan = Tables<'loans'>
 
 export default function EmprestimosPage() {
-  const { profile, household, members } = useHousehold()
+  const { profile, household } = useHousehold()
   const supabase = createClient()
   const [loans, setLoans] = useState<Loan[]>([])
   const [loading, setLoading] = useState(true)
@@ -31,6 +31,7 @@ export default function EmprestimosPage() {
     totalInstallments: '',
     remainingInstallments: '',
     monthlyPayment: '',
+    firstDueDate: todayISO(),
     owner: profile.id,
   })
 
@@ -92,6 +93,7 @@ export default function EmprestimosPage() {
       total_installments: Number(form.totalInstallments),
       remaining_installments: Number(form.remainingInstallments || form.totalInstallments),
       monthly_payment: Number(form.monthlyPayment),
+      first_due_date: form.firstDueDate,
       owner_profile_id: form.owner || null,
       attachment_path: attachmentPath,
     })
@@ -104,16 +106,12 @@ export default function EmprestimosPage() {
         totalInstallments: '',
         remainingInstallments: '',
         monthlyPayment: '',
+        firstDueDate: todayISO(),
         owner: profile.id,
       })
       setAttachment(null)
       load()
     }
-  }
-
-  async function handleDelete(id: string) {
-    setLoans((prev) => prev.filter((l) => l.id !== id))
-    await supabase.from('loans').delete().eq('id', id)
   }
 
   const totalOwed = loans.reduce((sum, l) => sum + remainingBalance(l), 0)
@@ -241,6 +239,15 @@ export default function EmprestimosPage() {
             />
           </div>
           <div>
+            <Label>1ª parcela em</Label>
+            <Input
+              type="date"
+              value={form.firstDueDate}
+              onChange={(e) => setForm({ ...form, firstDueDate: e.target.value })}
+              required
+            />
+          </div>
+          <div>
             <Label>Dono</Label>
             <OwnerSelect value={form.owner} onChange={(owner) => setForm({ ...form, owner })} />
           </div>
@@ -268,38 +275,9 @@ export default function EmprestimosPage() {
           <EmptyState title="Nenhum empréstimo ainda" description="Adicione um parcelamento ou empréstimo acima." />
         ) : (
           <div className="flex flex-col divide-y divide-black/5 dark:divide-white/10">
-            {loans.map((loan) => {
-              const progress = Math.round(
-                ((loan.total_installments - loan.remaining_installments) / loan.total_installments) * 100
-              )
-              return (
-                <div key={loan.id} className="py-3">
-                  <div className="flex items-center gap-3">
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium">{loan.name}</p>
-                      <p className="text-xs text-foreground/40">
-                        {loan.total_installments - loan.remaining_installments}/{loan.total_installments} parcelas ·{' '}
-                        {Number(loan.interest_rate)}% a.m. · {ownerLabel(members, loan.owner_profile_id)}
-                      </p>
-                      {loan.attachment_path && <AttachmentLink path={loan.attachment_path} />}
-                    </div>
-                    <span className="font-mono text-sm font-semibold">
-                      {fmtCurrency(Number(loan.monthly_payment))}/mês
-                    </span>
-                    <button
-                      onClick={() => handleDelete(loan.id)}
-                      className="text-foreground/30 transition-colors hover:text-red-500"
-                      aria-label="Excluir"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-black/5 dark:bg-white/10">
-                    <div className="h-full rounded-full bg-emerald-500" style={{ width: `${progress}%` }} />
-                  </div>
-                </div>
-              )
-            })}
+            {loans.map((loan) => (
+              <LoanRow key={loan.id} loan={loan} onChanged={load} onDeleted={load} />
+            ))}
           </div>
         )}
       </Card>
