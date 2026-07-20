@@ -5,6 +5,8 @@ import { Suspense, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button, Card, Input, Label } from '@/components/ui'
+import { PasswordInput } from '@/components/password-input'
+import { translateAuthError } from '@/lib/auth-errors'
 import { Wallet } from 'lucide-react'
 
 function SignupForm() {
@@ -25,7 +27,7 @@ function SignupForm() {
     const { data, error } = await supabase.auth.signUp({ email, password })
     setLoading(false)
     if (error) {
-      setError(error.message)
+      setError(translateAuthError(error.message))
       return
     }
     if (data.session) {
@@ -81,9 +83,8 @@ function SignupForm() {
           </div>
           <div>
             <Label htmlFor="password">Senha</Label>
-            <Input
+            <PasswordInput
               id="password"
-              type="password"
               required
               minLength={6}
               autoComplete="new-password"

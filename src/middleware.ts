@@ -27,8 +27,11 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  const isAuthRoute = request.nextUrl.pathname.startsWith('/login') ||
+  const isLoginOrSignup = request.nextUrl.pathname.startsWith('/login') ||
     request.nextUrl.pathname.startsWith('/signup')
+  const isPasswordRecovery = request.nextUrl.pathname.startsWith('/esqueci-senha') ||
+    request.nextUrl.pathname.startsWith('/redefinir-senha')
+  const isPublicRoute = isLoginOrSignup || isPasswordRecovery
   const isPublicAsset = request.nextUrl.pathname.startsWith('/_next') ||
     request.nextUrl.pathname.startsWith('/favicon')
   const isApiRoute = request.nextUrl.pathname.startsWith('/api')
@@ -37,13 +40,13 @@ export async function middleware(request: NextRequest) {
     return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
   }
 
-  if (!user && !isAuthRoute && !isPublicAsset) {
+  if (!user && !isPublicRoute && !isPublicAsset) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
   }
 
-  if (user && isAuthRoute) {
+  if (user && isLoginOrSignup) {
     const url = request.nextUrl.clone()
     url.pathname = '/'
     return NextResponse.redirect(url)

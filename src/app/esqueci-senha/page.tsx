@@ -2,35 +2,54 @@
 
 import Link from 'next/link'
 import { Suspense, useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button, Card, Input, Label } from '@/components/ui'
-import { PasswordInput } from '@/components/password-input'
 import { translateAuthError } from '@/lib/auth-errors'
-import { Wallet } from 'lucide-react'
+import { KeyRound } from 'lucide-react'
 
-function LoginForm() {
-  const router = useRouter()
+function EsqueciSenhaForm() {
   const searchParams = useSearchParams()
   const invite = searchParams.get('invite')
   const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [sent, setSent] = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
     setLoading(true)
     const supabase = createClient()
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const origin = window.location.origin
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${origin}/redefinir-senha`,
+    })
     setLoading(false)
     if (error) {
       setError(translateAuthError(error.message))
       return
     }
-    router.push(invite ? `/onboarding?invite=${invite}` : '/')
-    router.refresh()
+    setSent(true)
+  }
+
+  if (sent) {
+    return (
+      <div className="flex min-h-screen items-center justify-center p-4">
+        <Card className="w-full max-w-sm animate-fade-in-up text-center">
+          <h1 className="text-lg font-semibold tracking-tight">Verifique seu e-mail</h1>
+          <p className="mt-2 text-sm text-foreground/45">
+            Se {email} tiver uma conta, enviamos um link para redefinir a senha.
+          </p>
+          <Link
+            href={invite ? `/login?invite=${invite}` : '/login'}
+            className="mt-4 inline-block text-sm font-medium text-accent-emerald hover:underline"
+          >
+            Voltar para o login
+          </Link>
+        </Card>
+      </div>
+    )
   }
 
   return (
@@ -38,11 +57,11 @@ function LoginForm() {
       <Card className="w-full max-w-sm animate-fade-in-up">
         <div className="mb-6 flex flex-col items-center gap-2">
           <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-accent-emerald text-white shadow-sm shadow-accent-emerald/30">
-            <Wallet size={20} />
+            <KeyRound size={20} />
           </div>
-          <h1 className="text-lg font-semibold tracking-tight">Finanças Pro</h1>
-          <p className="text-sm text-foreground/45">
-            {invite ? 'Entre para aceitar o convite' : 'Entre na sua conta'}
+          <h1 className="text-lg font-semibold tracking-tight">Redefinir senha</h1>
+          <p className="text-center text-sm text-foreground/45">
+            Informe seu e-mail e enviaremos um link para você criar uma nova senha.
           </p>
         </div>
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
@@ -57,36 +76,18 @@ function LoginForm() {
               onChange={(e) => setEmail(e.target.value)}
             />
           </div>
-          <div>
-            <div className="flex items-center justify-between">
-              <Label htmlFor="password" className="mb-1.5">Senha</Label>
-              <Link
-                href={invite ? `/esqueci-senha?invite=${invite}` : '/esqueci-senha'}
-                className="mb-1.5 text-xs font-medium text-accent-emerald hover:underline"
-              >
-                Esqueceu a senha?
-              </Link>
-            </div>
-            <PasswordInput
-              id="password"
-              required
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-          </div>
           {error && <p className="text-xs text-accent-red">{error}</p>}
           <Button type="submit" disabled={loading} className="mt-2 w-full">
-            {loading ? 'Entrando…' : 'Entrar'}
+            {loading ? 'Enviando…' : 'Enviar link de redefinição'}
           </Button>
         </form>
         <p className="mt-4 text-center text-xs text-foreground/45">
-          Não tem conta?{' '}
+          Lembrou a senha?{' '}
           <Link
-            href={invite ? `/signup?invite=${invite}` : '/signup'}
+            href={invite ? `/login?invite=${invite}` : '/login'}
             className="font-medium text-accent-emerald hover:underline"
           >
-            Criar conta
+            Entrar
           </Link>
         </p>
       </Card>
@@ -94,10 +95,10 @@ function LoginForm() {
   )
 }
 
-export default function LoginPage() {
+export default function EsqueciSenhaPage() {
   return (
     <Suspense>
-      <LoginForm />
+      <EsqueciSenhaForm />
     </Suspense>
   )
 }
