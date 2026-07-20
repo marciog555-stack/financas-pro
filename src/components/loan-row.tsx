@@ -8,6 +8,7 @@ import { OwnerSelect } from '@/components/owner-select'
 import { AttachmentLink } from '@/components/attachment-link'
 import { LoanInstallments } from '@/components/loan-installments'
 import { Button, Input, Label } from '@/components/ui'
+import { ProgressBar } from '@/components/progress-bar'
 import { fmtCurrency } from '@/lib/format'
 import type { Tables } from '@/lib/database.types'
 
@@ -83,18 +84,16 @@ export function LoanRow({
         </button>
         <button
           onClick={handleDelete}
-          className="text-foreground/30 transition-colors hover:text-red-500"
+          className="text-foreground/25 transition-colors hover:text-accent-red"
           aria-label="Excluir"
         >
           <Trash2 size={16} />
         </button>
       </div>
-      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-black/5 dark:bg-white/10">
-        <div className="h-full rounded-full bg-emerald-500" style={{ width: `${progress}%` }} />
-      </div>
+      <ProgressBar value={progress} className="mt-2.5 h-1.5" barClassName="bg-accent-blue" />
 
       {expanded && (
-        <div className="mt-3 rounded-lg border border-black/5 p-3 dark:border-white/10">
+        <div className="mt-3 rounded-2xl border border-border bg-surface-2/30 p-3">
           {editing ? (
             <form onSubmit={handleSaveEdit} className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
               <div className="col-span-2">

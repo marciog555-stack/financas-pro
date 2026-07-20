@@ -33,13 +33,13 @@ function LoginForm() {
 
   return (
     <div className="flex min-h-screen items-center justify-center p-4">
-      <Card className="w-full max-w-sm">
+      <Card className="w-full max-w-sm animate-fade-in-up">
         <div className="mb-6 flex flex-col items-center gap-2">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-600 text-white">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-accent-emerald text-white shadow-sm shadow-accent-emerald/30">
             <Wallet size={20} />
           </div>
-          <h1 className="text-lg font-semibold">Finanças Pro</h1>
-          <p className="text-sm text-foreground/50">
+          <h1 className="text-lg font-semibold tracking-tight">Finanças Pro</h1>
+          <p className="text-sm text-foreground/45">
             {invite ? 'Entre para aceitar o convite' : 'Entre na sua conta'}
           </p>
         </div>
@@ -66,16 +66,16 @@ function LoginForm() {
               onChange={(e) => setPassword(e.target.value)}
             />
           </div>
-          {error && <p className="text-xs text-red-500">{error}</p>}
+          {error && <p className="text-xs text-accent-red">{error}</p>}
           <Button type="submit" disabled={loading} className="mt-2 w-full">
             {loading ? 'Entrando…' : 'Entrar'}
           </Button>
         </form>
-        <p className="mt-4 text-center text-xs text-foreground/50">
+        <p className="mt-4 text-center text-xs text-foreground/45">
           Não tem conta?{' '}
           <Link
             href={invite ? `/signup?invite=${invite}` : '/signup'}
-            className="font-medium text-emerald-600 hover:underline"
+            className="font-medium text-accent-emerald hover:underline"
           >
             Criar conta
           </Link>

@@ -24,7 +24,7 @@ export function AttachmentLink({ path }: { path: string }) {
       type="button"
       onClick={open}
       disabled={loading}
-      className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 hover:underline disabled:opacity-50"
+      className="inline-flex items-center gap-1 text-xs font-medium text-accent-emerald hover:underline disabled:opacity-50"
     >
       {loading ? <Loader2 size={12} className="animate-spin" /> : <Paperclip size={12} />}
       Anexo

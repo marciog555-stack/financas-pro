@@ -5,7 +5,7 @@ export function Card({ className, ...props }: React.HTMLAttributes<HTMLDivElemen
   return (
     <div
       className={cn(
-        'rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-white/5',
+        'rounded-3xl border border-border bg-surface p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)] backdrop-blur-sm',
         className
       )}
       {...props}
@@ -25,13 +25,13 @@ export function Button({
   return (
     <button
       className={cn(
-        'inline-flex items-center justify-center gap-1.5 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:pointer-events-none',
-        size === 'sm' ? 'px-2.5 py-1.5 text-xs' : 'px-4 py-2 text-sm',
-        variant === 'primary' && 'bg-emerald-600 text-white hover:bg-emerald-500',
-        variant === 'secondary' &&
-          'bg-black/5 text-foreground hover:bg-black/10 dark:bg-white/10 dark:hover:bg-white/15',
-        variant === 'ghost' && 'text-foreground hover:bg-black/5 dark:hover:bg-white/10',
-        variant === 'danger' && 'bg-red-600/10 text-red-600 hover:bg-red-600/20 dark:text-red-400',
+        'inline-flex items-center justify-center gap-1.5 rounded-full font-medium transition-all active:scale-[0.97] disabled:opacity-50 disabled:pointer-events-none disabled:active:scale-100',
+        size === 'sm' ? 'px-3 py-1.5 text-xs' : 'px-5 py-2.5 text-sm',
+        variant === 'primary' &&
+          'bg-gradient-to-b from-accent-emerald to-accent-emerald text-white shadow-sm shadow-accent-emerald/20 hover:brightness-110',
+        variant === 'secondary' && 'bg-surface-2 text-foreground hover:bg-surface-2/70',
+        variant === 'ghost' && 'text-foreground/70 hover:bg-surface-2 hover:text-foreground',
+        variant === 'danger' && 'bg-accent-red/10 text-accent-red hover:bg-accent-red/20',
         className
       )}
       {...props}
@@ -43,7 +43,7 @@ export function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElem
   return (
     <input
       className={cn(
-        'w-full rounded-lg border border-black/10 bg-white px-3 py-2 text-sm outline-none transition-colors focus:border-emerald-500 dark:border-white/10 dark:bg-black/20',
+        'w-full rounded-xl border border-border bg-surface-2 px-3.5 py-2.5 text-sm outline-none transition-colors placeholder:text-foreground/30 focus:border-accent-emerald/60 focus:ring-2 focus:ring-accent-emerald/15',
         className
       )}
       {...props}
@@ -55,7 +55,7 @@ export function Textarea({ className, ...props }: TextareaHTMLAttributes<HTMLTex
   return (
     <textarea
       className={cn(
-        'w-full rounded-lg border border-black/10 bg-white px-3 py-2 text-sm outline-none transition-colors focus:border-emerald-500 dark:border-white/10 dark:bg-black/20',
+        'w-full rounded-xl border border-border bg-surface-2 px-3.5 py-2.5 text-sm outline-none transition-colors placeholder:text-foreground/30 focus:border-accent-emerald/60 focus:ring-2 focus:ring-accent-emerald/15',
         className
       )}
       {...props}
@@ -67,7 +67,7 @@ export function Select({ className, ...props }: SelectHTMLAttributes<HTMLSelectE
   return (
     <select
       className={cn(
-        'w-full rounded-lg border border-black/10 bg-white px-3 py-2 text-sm outline-none transition-colors focus:border-emerald-500 dark:border-white/10 dark:bg-black/20',
+        'w-full rounded-xl border border-border bg-surface-2 px-3.5 py-2.5 text-sm outline-none transition-colors focus:border-accent-emerald/60 focus:ring-2 focus:ring-accent-emerald/15',
         className
       )}
       {...props}
@@ -78,7 +78,7 @@ export function Select({ className, ...props }: SelectHTMLAttributes<HTMLSelectE
 export function Label({ className, ...props }: LabelHTMLAttributes<HTMLLabelElement>) {
   return (
     <label
-      className={cn('mb-1 block text-xs font-medium text-foreground/60', className)}
+      className={cn('mb-1.5 block text-xs font-medium text-foreground/50', className)}
       {...props}
     />
   )
@@ -92,11 +92,11 @@ export function Badge({
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium',
-        tone === 'neutral' && 'bg-black/5 text-foreground/70 dark:bg-white/10',
-        tone === 'success' && 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
-        tone === 'warning' && 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
-        tone === 'danger' && 'bg-red-500/10 text-red-600 dark:text-red-400',
+        'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium',
+        tone === 'neutral' && 'bg-surface-2 text-foreground/60',
+        tone === 'success' && 'bg-accent-emerald/10 text-accent-emerald',
+        tone === 'warning' && 'bg-accent-orange/10 text-accent-orange',
+        tone === 'danger' && 'bg-accent-red/10 text-accent-red',
         className
       )}
       {...props}
@@ -106,9 +106,9 @@ export function Badge({
 
 export function EmptyState({ title, description }: { title: string; description?: string }) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-black/10 py-10 text-center dark:border-white/10">
-      <p className="text-sm font-medium text-foreground/70">{title}</p>
-      {description && <p className="mt-1 text-xs text-foreground/40">{description}</p>}
+    <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border py-10 text-center">
+      <p className="text-sm font-medium text-foreground/60">{title}</p>
+      {description && <p className="mt-1 text-xs text-foreground/35">{description}</p>}
     </div>
   )
 }
