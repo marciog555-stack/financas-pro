@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { ProfileProvider } from '@/lib/profile-context'
+import { HouseholdProvider } from '@/lib/household-context'
 import { Shell } from '@/components/shell'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -18,11 +18,18 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     .eq('user_id', user.id)
     .maybeSingle()
 
-  if (!profile) redirect('/onboarding')
+  if (!profile || !profile.household_id) redirect('/onboarding')
+
+  const [{ data: household }, { data: members }] = await Promise.all([
+    supabase.from('households').select('*').eq('id', profile.household_id).single(),
+    supabase.from('profiles').select('*').eq('household_id', profile.household_id).order('created_at'),
+  ])
+
+  if (!household) redirect('/onboarding')
 
   return (
-    <ProfileProvider profile={profile}>
+    <HouseholdProvider value={{ profile, household, members: members ?? [profile] }}>
       <Shell email={user.email ?? ''}>{children}</Shell>
-    </ProfileProvider>
+    </HouseholdProvider>
   )
 }

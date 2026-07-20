@@ -1,7 +1,7 @@
 'use client'
 
 import { Select } from '@/components/ui'
-import { useProfile } from '@/lib/profile-context'
+import { useHousehold } from '@/lib/household-context'
 
 export function OwnerSelect({
   value,
@@ -13,15 +13,16 @@ export function OwnerSelect({
   onChange: (value: string) => void
   includeShared?: boolean
 } & Omit<React.ComponentProps<typeof Select>, 'value' | 'onChange'>) {
-  const profile = useProfile()
+  const { members } = useHousehold()
 
   return (
     <Select value={value} onChange={(e) => onChange(e.target.value)} {...props}>
-      <option value="me">{profile.name || 'Eu'}</option>
-      {profile.mode === 'couple' && (
-        <option value="partner">{profile.partner_name || 'Parceiro(a)'}</option>
-      )}
-      {includeShared && <option value="shared">Compartilhado</option>}
+      {members.map((m) => (
+        <option key={m.id} value={m.id}>
+          {m.name.trim() || 'Sem nome'}
+        </option>
+      ))}
+      {includeShared && <option value="">Compartilhado</option>}
     </Select>
   )
 }

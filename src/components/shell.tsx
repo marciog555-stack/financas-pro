@@ -10,13 +10,14 @@ import {
   Landmark,
   Target,
   BarChart2,
+  UserPlus,
   LogOut,
   Menu,
   X,
 } from 'lucide-react'
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { useProfile } from '@/lib/profile-context'
+import { useHousehold } from '@/lib/household-context'
 import { cn } from '@/lib/cn'
 
 const NAV = [
@@ -27,12 +28,13 @@ const NAV = [
   { href: '/emprestimos', label: 'Empréstimos', icon: Landmark },
   { href: '/metas', label: 'Metas', icon: Target },
   { href: '/relatorios', label: 'Relatórios', icon: BarChart2 },
+  { href: '/convidar', label: 'Convidar', icon: UserPlus },
 ]
 
 export function Shell({ email, children }: { email: string; children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
-  const profile = useProfile()
+  const { profile, household, members } = useHousehold()
   const [mobileOpen, setMobileOpen] = useState(false)
 
   async function handleLogout() {
@@ -41,6 +43,8 @@ export function Shell({ email, children }: { email: string; children: React.Reac
     router.push('/login')
     router.refresh()
   }
+
+  const otherMembers = members.filter((m) => m.id !== profile.id)
 
   const navLinks = (
     <nav className="flex flex-1 flex-col gap-1">
@@ -118,9 +122,9 @@ export function Shell({ email, children }: { email: string; children: React.Reac
           <div>
             <h1 className="text-xl font-semibold">Olá, {profile.name.split(' ')[0]}</h1>
             <p className="text-sm text-foreground/50">
-              {profile.mode === 'couple' && profile.partner_name
-                ? `Conta compartilhada com ${profile.partner_name}`
-                : 'Conta individual'}
+              {otherMembers.length > 0
+                ? `${household.name} · compartilhada com ${otherMembers.map((m) => m.name.split(' ')[0]).join(', ')}`
+                : `${household.name} · só você por aqui`}
             </p>
           </div>
         </div>

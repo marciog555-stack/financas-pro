@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Plus, Trash2, RefreshCw } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { useProfile, ownerLabel } from '@/lib/profile-context'
+import { useHousehold, ownerLabel } from '@/lib/household-context'
 import { OwnerSelect } from '@/components/owner-select'
 import { AttachmentField } from '@/components/attachment-field'
 import { AttachmentLink } from '@/components/attachment-link'
@@ -15,7 +15,7 @@ import type { Tables } from '@/lib/database.types'
 type Income = Tables<'incomes'>
 
 export default function RendaPage() {
-  const profile = useProfile()
+  const { profile, household, members } = useHousehold()
   const supabase = createClient()
   const [incomes, setIncomes] = useState<Income[]>([])
   const [loading, setLoading] = useState(true)
@@ -26,7 +26,7 @@ export default function RendaPage() {
     amount: '',
     date: todayISO(),
     isRecurring: false,
-    owner: 'me',
+    owner: profile.id,
   })
 
   async function load() {
@@ -34,7 +34,7 @@ export default function RendaPage() {
     const { data } = await supabase
       .from('incomes')
       .select('*')
-      .eq('profile_id', profile.id)
+      .eq('household_id', household.id)
       .order('date', { ascending: false })
     setIncomes(data ?? [])
     setLoading(false)
@@ -54,17 +54,17 @@ export default function RendaPage() {
       attachmentPath = await uploadAttachment(supabase, profile.user_id, 'incomes', attachment)
     }
     const { error } = await supabase.from('incomes').insert({
-      profile_id: profile.id,
+      household_id: household.id,
       source: form.source,
       amount: Number(form.amount),
       date: form.date,
       is_recurring: form.isRecurring,
-      owner: form.owner,
+      owner_profile_id: form.owner || null,
       attachment_path: attachmentPath,
     })
     setSaving(false)
     if (!error) {
-      setForm({ source: '', amount: '', date: todayISO(), isRecurring: false, owner: 'me' })
+      setForm({ source: '', amount: '', date: todayISO(), isRecurring: false, owner: profile.id })
       setAttachment(null)
       load()
     }
@@ -153,7 +153,7 @@ export default function RendaPage() {
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">{income.source}</p>
                   <p className="text-xs text-foreground/40">
-                    {fmtDate(income.date)} · {ownerLabel(profile, income.owner)}
+                    {fmtDate(income.date)} · {ownerLabel(members, income.owner_profile_id)}
                     {income.is_recurring ? ' · recorrente' : ''}
                   </p>
                   {income.attachment_path && <AttachmentLink path={income.attachment_path} />}

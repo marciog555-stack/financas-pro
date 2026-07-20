@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Plus, Trash2, RefreshCw, Sparkles, TrendingDown, Zap } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { useProfile, ownerLabel } from '@/lib/profile-context'
+import { useHousehold, ownerLabel } from '@/lib/household-context'
 import { OwnerSelect } from '@/components/owner-select'
 import { AttachmentField } from '@/components/attachment-field'
 import { AttachmentLink } from '@/components/attachment-link'
@@ -16,7 +16,7 @@ import type { Tables } from '@/lib/database.types'
 type Loan = Tables<'loans'>
 
 export default function EmprestimosPage() {
-  const profile = useProfile()
+  const { profile, household, members } = useHousehold()
   const supabase = createClient()
   const [loans, setLoans] = useState<Loan[]>([])
   const [loading, setLoading] = useState(true)
@@ -31,7 +31,7 @@ export default function EmprestimosPage() {
     totalInstallments: '',
     remainingInstallments: '',
     monthlyPayment: '',
-    owner: 'me',
+    owner: profile.id,
   })
 
   async function load() {
@@ -39,7 +39,7 @@ export default function EmprestimosPage() {
     const { data } = await supabase
       .from('loans')
       .select('*')
-      .eq('profile_id', profile.id)
+      .eq('household_id', household.id)
       .order('created_at', { ascending: false })
     setLoans(data ?? [])
     setLoading(false)
@@ -85,14 +85,14 @@ export default function EmprestimosPage() {
       attachmentPath = await uploadAttachment(supabase, profile.user_id, 'loans', attachment)
     }
     const { error } = await supabase.from('loans').insert({
-      profile_id: profile.id,
+      household_id: household.id,
       name: form.name,
       total_amount: Number(form.totalAmount),
       interest_rate: Number(form.interestRate || 0),
       total_installments: Number(form.totalInstallments),
       remaining_installments: Number(form.remainingInstallments || form.totalInstallments),
       monthly_payment: Number(form.monthlyPayment),
-      owner: form.owner,
+      owner_profile_id: form.owner || null,
       attachment_path: attachmentPath,
     })
     setSaving(false)
@@ -104,7 +104,7 @@ export default function EmprestimosPage() {
         totalInstallments: '',
         remainingInstallments: '',
         monthlyPayment: '',
-        owner: 'me',
+        owner: profile.id,
       })
       setAttachment(null)
       load()
@@ -279,7 +279,7 @@ export default function EmprestimosPage() {
                       <p className="truncate text-sm font-medium">{loan.name}</p>
                       <p className="text-xs text-foreground/40">
                         {loan.total_installments - loan.remaining_installments}/{loan.total_installments} parcelas ·{' '}
-                        {Number(loan.interest_rate)}% a.m. · {ownerLabel(profile, loan.owner)}
+                        {Number(loan.interest_rate)}% a.m. · {ownerLabel(members, loan.owner_profile_id)}
                       </p>
                       {loan.attachment_path && <AttachmentLink path={loan.attachment_path} />}
                     </div>

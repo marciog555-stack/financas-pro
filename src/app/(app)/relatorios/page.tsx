@@ -21,9 +21,11 @@ export default async function RelatoriosPage() {
   sixMonthsAgo.setDate(1)
   const rangeStart = sixMonthsAgo.toISOString().slice(0, 10)
 
+  const householdId = profile!.household_id!
+
   const [{ data: incomes }, { data: expenses }] = await Promise.all([
-    supabase.from('incomes').select('*').eq('profile_id', profile!.id).gte('date', rangeStart),
-    supabase.from('expenses').select('*').eq('profile_id', profile!.id).gte('due_date', rangeStart),
+    supabase.from('incomes').select('*').eq('household_id', householdId).gte('date', rangeStart),
+    supabase.from('expenses').select('*').eq('household_id', householdId).gte('due_date', rangeStart),
   ])
 
   const months: { key: string; month: string; renda: number; despesas: number }[] = []

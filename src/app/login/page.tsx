@@ -1,14 +1,16 @@
 'use client'
 
 import Link from 'next/link'
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { Suspense, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button, Card, Input, Label } from '@/components/ui'
 import { Wallet } from 'lucide-react'
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const invite = searchParams.get('invite')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -25,7 +27,7 @@ export default function LoginPage() {
       setError(error.message === 'Invalid login credentials' ? 'E-mail ou senha inválidos.' : error.message)
       return
     }
-    router.push('/')
+    router.push(invite ? `/onboarding?invite=${invite}` : '/')
     router.refresh()
   }
 
@@ -37,7 +39,9 @@ export default function LoginPage() {
             <Wallet size={20} />
           </div>
           <h1 className="text-lg font-semibold">Finanças Pro</h1>
-          <p className="text-sm text-foreground/50">Entre na sua conta</p>
+          <p className="text-sm text-foreground/50">
+            {invite ? 'Entre para aceitar o convite' : 'Entre na sua conta'}
+          </p>
         </div>
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
           <div>
@@ -69,11 +73,22 @@ export default function LoginPage() {
         </form>
         <p className="mt-4 text-center text-xs text-foreground/50">
           Não tem conta?{' '}
-          <Link href="/signup" className="font-medium text-emerald-600 hover:underline">
+          <Link
+            href={invite ? `/signup?invite=${invite}` : '/signup'}
+            className="font-medium text-emerald-600 hover:underline"
+          >
             Criar conta
           </Link>
         </p>
       </Card>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   )
 }
