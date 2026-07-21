@@ -3,9 +3,11 @@ import { createClient } from '@/lib/supabase/server'
 import { Card, Badge } from '@/components/ui'
 import { AnimatedNumber } from '@/components/animated-number'
 import { ProgressBar } from '@/components/progress-bar'
+import { Avatar } from '@/components/avatar'
 import { fmtCurrency, fmtDate, todayISO } from '@/lib/format'
 import { EXPENSE_CATEGORIES, type ExpenseCategory } from '@/lib/categories'
-import { TrendingUp, TrendingDown, Wallet, Landmark, Target, CalendarClock } from 'lucide-react'
+import { ownerLabel } from '@/lib/household-context'
+import { TrendingUp, TrendingDown, Wallet, Landmark, Target, CalendarClock, Users } from 'lucide-react'
 import Link from 'next/link'
 
 export default async function DashboardPage() {
@@ -30,21 +32,29 @@ export default async function DashboardPage() {
 
   const householdId = profile.household_id
 
-  const [{ data: incomes }, { data: expenses }, { data: benefits }, { data: loans }, { data: goals }, { data: upcomingExpenses }] =
-    await Promise.all([
-      supabase.from('incomes').select('*').eq('household_id', householdId).gte('date', monthStart).lte('date', monthEnd),
-      supabase.from('expenses').select('*').eq('household_id', householdId).gte('due_date', monthStart).lte('due_date', monthEnd),
-      supabase.from('benefit_cards').select('*').eq('household_id', householdId),
-      supabase.from('loans').select('*').eq('household_id', householdId),
-      supabase.from('goals').select('*').eq('household_id', householdId),
-      supabase
-        .from('expenses')
-        .select('*')
-        .eq('household_id', householdId)
-        .eq('is_paid', false)
-        .order('due_date', { ascending: true })
-        .limit(5),
-    ])
+  const [
+    { data: incomes },
+    { data: expenses },
+    { data: benefits },
+    { data: loans },
+    { data: goals },
+    { data: upcomingExpenses },
+    { data: members },
+  ] = await Promise.all([
+    supabase.from('incomes').select('*').eq('household_id', householdId).gte('date', monthStart).lte('date', monthEnd),
+    supabase.from('expenses').select('*').eq('household_id', householdId).gte('due_date', monthStart).lte('due_date', monthEnd),
+    supabase.from('benefit_cards').select('*').eq('household_id', householdId),
+    supabase.from('loans').select('*').eq('household_id', householdId),
+    supabase.from('goals').select('*').eq('household_id', householdId),
+    supabase
+      .from('expenses')
+      .select('*')
+      .eq('household_id', householdId)
+      .eq('is_paid', false)
+      .order('due_date', { ascending: true })
+      .limit(5),
+    supabase.from('profiles').select('*').eq('household_id', householdId).order('created_at'),
+  ])
 
   const totalIncome = (incomes ?? []).reduce((s, i) => s + Number(i.amount), 0)
   const totalExpense = (expenses ?? []).reduce((s, e) => s + Number(e.amount), 0)
@@ -56,6 +66,15 @@ export default async function DashboardPage() {
   )
 
   const upcoming = upcomingExpenses ?? []
+
+  const spendByOwner = new Map<string | null, number>()
+  for (const e of expenses ?? []) {
+    const key = e.owner_profile_id
+    spendByOwner.set(key, (spendByOwner.get(key) ?? 0) + Number(e.amount))
+  }
+  const spendByPerson = Array.from(spendByOwner.entries())
+    .map(([ownerId, amount]) => ({ name: ownerLabel(members ?? [], ownerId), amount }))
+    .sort((a, b) => b.amount - a.amount)
 
   const positive = balance >= 0
 
@@ -107,8 +126,33 @@ export default async function DashboardPage() {
         </Card>
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-2">
+      {spendByPerson.length > 0 && totalExpense > 0 && (
         <Card className="animate-fade-in-up [animation-delay:120ms]">
+          <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold">
+            <Users size={15} className="text-foreground/40" /> Gastos por pessoa
+          </h2>
+          <div className="flex flex-col gap-3">
+            {spendByPerson.map((p) => {
+              const pct = Math.round((p.amount / totalExpense) * 100)
+              return (
+                <div key={p.name} className="flex items-center gap-3">
+                  <Avatar name={p.name} size={32} />
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-1 flex items-center justify-between text-xs">
+                      <span className="truncate font-medium text-foreground/70">{p.name}</span>
+                      <span className="font-mono text-foreground/40">{fmtCurrency(p.amount)}</span>
+                    </div>
+                    <ProgressBar value={pct} className="h-1.5" barClassName="bg-accent-blue" />
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </Card>
+      )}
+
+      <div className="grid gap-5 lg:grid-cols-2">
+        <Card className="animate-fade-in-up [animation-delay:160ms]">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="flex items-center gap-2 text-sm font-semibold">
               <CalendarClock size={15} className="text-foreground/40" /> Contas a vencer
@@ -143,7 +187,7 @@ export default async function DashboardPage() {
           )}
         </Card>
 
-        <Card className="animate-fade-in-up [animation-delay:160ms]">
+        <Card className="animate-fade-in-up [animation-delay:200ms]">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="flex items-center gap-2 text-sm font-semibold">
               <Target size={15} className="text-accent-purple" /> Metas
