@@ -173,19 +173,19 @@ export default function RendaPage() {
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium">{income.source}</p>
-                      <p className="text-xs text-foreground/40">
+                      <p className="truncate text-xs text-foreground/40">
                         {fmtDate(income.date)} · {ownerLabel(members, income.owner_profile_id)}
                         {income.is_recurring ? ' · recorrente' : ''}
                       </p>
                       {income.attachment_path && <AttachmentLink path={income.attachment_path} />}
                     </div>
-                    <span className="font-mono text-sm font-semibold text-accent-emerald">
+                    <span className="shrink-0 font-mono text-sm font-semibold text-accent-emerald">
                       {fmtCurrency(Number(income.amount))}
                     </span>
                     {hasBreakdown && (
                       <button
                         onClick={() => setExpandedId(expanded ? null : income.id)}
-                        className="text-foreground/40 transition-colors hover:text-foreground"
+                        className="shrink-0 text-foreground/40 transition-colors hover:text-foreground"
                         aria-label="Ver detalhamento"
                       >
                         {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
@@ -193,7 +193,7 @@ export default function RendaPage() {
                     )}
                     <button
                       onClick={() => handleDelete(income.id)}
-                      className="text-foreground/25 transition-colors hover:text-accent-red"
+                      className="shrink-0 text-foreground/25 transition-colors hover:text-accent-red"
                       aria-label="Excluir"
                     >
                       <Trash2 size={16} />

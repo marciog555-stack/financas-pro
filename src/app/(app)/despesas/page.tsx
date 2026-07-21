@@ -6,10 +6,11 @@ import { Plus, Trash2, RefreshCw, CheckCircle2, Circle, CreditCard } from 'lucid
 import { createClient } from '@/lib/supabase/client'
 import { useHousehold, ownerLabel } from '@/lib/household-context'
 import { OwnerSelect } from '@/components/owner-select'
-import { Button, Card, EmptyState, Input, Label, Select, Badge } from '@/components/ui'
+import { Button, Card, EmptyState, Input, Label, Select } from '@/components/ui'
 import { BottomSheet } from '@/components/bottom-sheet'
 import { fmtCurrency, fmtDate, todayISO } from '@/lib/format'
 import { EXPENSE_CATEGORIES, type ExpenseCategory } from '@/lib/categories'
+import { cn } from '@/lib/cn'
 import type { Tables } from '@/lib/database.types'
 
 type Expense = Tables<'expenses'>
@@ -122,13 +123,14 @@ export default function DespesasPage() {
           <div className="flex flex-col divide-y divide-border">
             {expenses.map((expense) => {
               const cat = EXPENSE_CATEGORIES[expense.category as ExpenseCategory] ?? EXPENSE_CATEGORIES.other
+              const overdue = !expense.is_paid && Boolean(expense.due_date && expense.due_date < todayISO())
               return (
-                <div key={expense.id} className="flex items-center gap-3 py-3">
-                  <button onClick={() => togglePaid(expense)} aria-label="Marcar como pago">
+                <div key={expense.id} className="flex items-center gap-2.5 py-3">
+                  <button onClick={() => togglePaid(expense)} aria-label="Marcar como pago" className="shrink-0">
                     {expense.is_paid ? (
                       <CheckCircle2 className="text-accent-emerald" size={20} />
                     ) : (
-                      <Circle className="text-foreground/20" size={20} />
+                      <Circle className={overdue ? 'text-accent-red' : 'text-foreground/20'} size={20} />
                     )}
                   </button>
                   <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface-2 text-base">
@@ -136,17 +138,17 @@ export default function DespesasPage() {
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">{expense.name}</p>
-                    <p className="text-xs text-foreground/40">
-                      Vence {fmtDate(expense.due_date)} · {ownerLabel(members, expense.owner_profile_id)}
+                    <p className="truncate text-xs text-foreground/40">
+                      {overdue ? 'Venceu' : 'Vence'} {fmtDate(expense.due_date)} ·{' '}
+                      {ownerLabel(members, expense.owner_profile_id)}
                     </p>
                   </div>
-                  {!expense.is_paid && <Badge tone="warning">Pendente</Badge>}
-                  <span className="font-mono text-sm font-semibold">
+                  <span className={cn('shrink-0 font-mono text-sm font-semibold', overdue && 'text-accent-red')}>
                     {fmtCurrency(Number(expense.amount))}
                   </span>
                   <button
                     onClick={() => handleDelete(expense.id)}
-                    className="text-foreground/25 transition-colors hover:text-accent-red"
+                    className="shrink-0 text-foreground/25 transition-colors hover:text-accent-red"
                     aria-label="Excluir"
                   >
                     <Trash2 size={16} />
