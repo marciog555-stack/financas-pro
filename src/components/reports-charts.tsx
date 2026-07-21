@@ -15,7 +15,7 @@ import {
 } from 'recharts'
 import { fmtCurrency } from '@/lib/format'
 
-const PIE_COLORS = [
+export const PIE_COLORS = [
   'var(--accent-emerald)',
   'var(--accent-blue)',
   'var(--accent-purple)',
@@ -56,28 +56,34 @@ export function MonthlyBarChart({
   )
 }
 
-export function CategoryPieChart({ data }: { data: { name: string; value: number }[] }) {
+export function CategoryPieChart({ data, total }: { data: { name: string; value: number }[]; total: number }) {
   if (data.length === 0) {
     return <p className="py-16 text-center text-sm text-foreground/40">Sem despesas para exibir.</p>
   }
   return (
-    <ResponsiveContainer width="100%" height={280}>
-      <PieChart>
-        <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}>
-          {data.map((_, i) => (
-            <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
-          ))}
-        </Pie>
-        <Tooltip
-          formatter={(value) => fmtCurrency(Number(value))}
-          contentStyle={{
-            borderRadius: 12,
-            border: '1px solid var(--border-color)',
-            fontSize: 13,
-            background: 'var(--background)',
-          }}
-        />
-      </PieChart>
-    </ResponsiveContainer>
+    <div className="relative">
+      <ResponsiveContainer width="100%" height={240}>
+        <PieChart>
+          <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={64} outerRadius={92} paddingAngle={2}>
+            {data.map((_, i) => (
+              <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} stroke="none" />
+            ))}
+          </Pie>
+          <Tooltip
+            formatter={(value) => fmtCurrency(Number(value))}
+            contentStyle={{
+              borderRadius: 12,
+              border: '1px solid var(--border-color)',
+              fontSize: 13,
+              background: 'var(--background)',
+            }}
+          />
+        </PieChart>
+      </ResponsiveContainer>
+      <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+        <span className="text-[11px] text-foreground/45">Total</span>
+        <span className="font-mono text-lg font-semibold">{fmtCurrency(total)}</span>
+      </div>
+    </div>
   )
 }

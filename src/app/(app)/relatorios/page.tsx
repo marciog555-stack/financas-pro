@@ -1,7 +1,8 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { Card } from '@/components/ui'
-import { MonthlyBarChart, CategoryPieChart } from '@/components/reports-charts'
+import { MonthlyBarChart, CategoryPieChart, PIE_COLORS } from '@/components/reports-charts'
+import { Sparkline } from '@/components/sparkline'
 import { EXPENSE_CATEGORIES, type ExpenseCategory } from '@/lib/categories'
 import { fmtCurrency } from '@/lib/format'
 import { BarChart2 } from 'lucide-react'
@@ -60,14 +61,25 @@ export default async function RelatoriosPage() {
     if (bucket) bucket.despesas += Number(expense.amount)
   }
 
+  const monthKeys = months.map((m) => m.key)
   const byCategory = new Map<string, number>()
+  const categoryMonthly = new Map<string, number[]>()
   for (const expense of expenses ?? []) {
     byCategory.set(expense.category, (byCategory.get(expense.category) ?? 0) + Number(expense.amount))
+    if (!expense.due_date) continue
+    const idx = monthKeys.indexOf(expense.due_date.slice(0, 7))
+    if (idx === -1) continue
+    const trend = categoryMonthly.get(expense.category) ?? new Array(months.length).fill(0)
+    trend[idx] += Number(expense.amount)
+    categoryMonthly.set(expense.category, trend)
   }
   const categoryData = Array.from(byCategory.entries())
     .map(([key, value]) => ({
+      key,
       name: EXPENSE_CATEGORIES[key as ExpenseCategory]?.label ?? key,
+      emoji: EXPENSE_CATEGORIES[key as ExpenseCategory]?.emoji ?? '💳',
       value,
+      trend: categoryMonthly.get(key) ?? new Array(months.length).fill(0),
     }))
     .sort((a, b) => b.value - a.value)
 
@@ -112,7 +124,26 @@ export default async function RelatoriosPage() {
 
       <Card className="animate-fade-in-up [animation-delay:160ms]">
         <h2 className="mb-3 text-sm font-semibold">Despesas por categoria</h2>
-        <CategoryPieChart data={categoryData} />
+        <CategoryPieChart data={categoryData} total={totalExpense6m} />
+        {categoryData.length > 0 && (
+          <div className="mt-4 flex flex-col divide-y divide-border">
+            {categoryData.map((c, i) => (
+              <div key={c.key} className="flex items-center gap-3 py-2.5">
+                <span
+                  className="h-2.5 w-2.5 shrink-0 rounded-full"
+                  style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }}
+                />
+                <span className="min-w-0 flex-1 truncate text-sm text-foreground/70">
+                  {c.emoji} {c.name}
+                </span>
+                <Sparkline values={c.trend} color={PIE_COLORS[i % PIE_COLORS.length]} />
+                <span className="w-24 shrink-0 text-right font-mono text-sm font-medium">
+                  {fmtCurrency(c.value)}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </Card>
     </div>
   )
