@@ -57,6 +57,54 @@ export type Database = {
           },
         ]
       }
+      benefit_transactions: {
+        Row: {
+          amount: number
+          benefit_card_id: string
+          category: string | null
+          created_at: string
+          date: string
+          description: string
+          household_id: string
+          id: string
+        }
+        Insert: {
+          amount: number
+          benefit_card_id: string
+          category?: string | null
+          created_at?: string
+          date?: string
+          description: string
+          household_id: string
+          id?: string
+        }
+        Update: {
+          amount?: number
+          benefit_card_id?: string
+          category?: string | null
+          created_at?: string
+          date?: string
+          description?: string
+          household_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "benefit_transactions_benefit_card_id_fkey"
+            columns: ["benefit_card_id"]
+            isOneToOne: false
+            referencedRelation: "benefit_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "benefit_transactions_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       expenses: {
         Row: {
           amount: number
