@@ -1,10 +1,11 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { Card } from '@/components/ui'
-import { MonthlyBarChart, CategoryPieChart, PIE_COLORS } from '@/components/reports-charts'
+import { MonthlyBarChart, CategoryPieChart } from '@/components/reports-charts'
 import { Sparkline } from '@/components/sparkline'
 import { EXPENSE_CATEGORIES, type ExpenseCategory } from '@/lib/categories'
 import { fmtCurrency } from '@/lib/format'
+import { PIE_COLORS } from '@/lib/chart-colors'
 import { BarChart2 } from 'lucide-react'
 
 export default async function RelatoriosPage() {
