@@ -1,3 +1,4 @@
+import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { Card } from '@/components/ui'
 import { MonthlyBarChart, CategoryPieChart } from '@/components/reports-charts'
@@ -11,18 +12,22 @@ export default async function RelatoriosPage() {
     data: { user },
   } = await supabase.auth.getUser()
 
+  if (!user) redirect('/login')
+
   const { data: profile } = await supabase
     .from('profiles')
     .select('*')
-    .eq('user_id', user!.id)
-    .single()
+    .eq('user_id', user.id)
+    .maybeSingle()
+
+  if (!profile?.household_id) redirect('/onboarding')
 
   const sixMonthsAgo = new Date()
   sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5)
   sixMonthsAgo.setDate(1)
   const rangeStart = sixMonthsAgo.toISOString().slice(0, 10)
 
-  const householdId = profile!.household_id!
+  const householdId = profile.household_id
 
   const [{ data: incomes }, { data: expenses }] = await Promise.all([
     supabase.from('incomes').select('*').eq('household_id', householdId).gte('date', rangeStart),
