@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Plus, Trash2, RefreshCw, Wallet } from 'lucide-react'
+import { Plus, RefreshCw, Wallet } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { useHousehold, ownerLabel } from '@/lib/household-context'
+import { useHousehold } from '@/lib/household-context'
 import { OwnerSelect } from '@/components/owner-select'
+import { BenefitCard } from '@/components/benefit-card'
 import { Button, Card, EmptyState, Input, Label, Select } from '@/components/ui'
 import { BottomSheet } from '@/components/bottom-sheet'
 import { fmtCurrency } from '@/lib/format'
@@ -15,7 +16,7 @@ import type { Tables } from '@/lib/database.types'
 type Benefit = Tables<'benefit_cards'>
 
 export default function BeneficiosPage() {
-  const { profile, household, members } = useHousehold()
+  const { profile, household } = useHousehold()
   const supabase = createClient()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -108,32 +109,12 @@ export default function BeneficiosPage() {
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {benefits.map((benefit) => (
-              <div key={benefit.id} className="rounded-2xl border border-border bg-surface-2/40 p-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent-orange/10 text-accent-orange">
-                      <Wallet size={16} />
-                    </span>
-                    <div>
-                      <p className="text-sm font-medium">{benefit.name}</p>
-                      <p className="text-xs text-foreground/40">
-                        {BENEFIT_TYPES[benefit.type as BenefitType] ?? benefit.type} ·{' '}
-                        {ownerLabel(members, benefit.owner_profile_id)}
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => handleDelete(benefit.id)}
-                    className="text-foreground/25 transition-colors hover:text-accent-red"
-                    aria-label="Excluir"
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </div>
-                <p className="mt-3 font-mono text-lg font-semibold text-accent-orange">
-                  {fmtCurrency(Number(benefit.balance))}
-                </p>
-              </div>
+              <BenefitCard
+                key={benefit.id}
+                benefit={benefit}
+                onChanged={load}
+                onDelete={() => handleDelete(benefit.id)}
+              />
             ))}
           </div>
         )}
