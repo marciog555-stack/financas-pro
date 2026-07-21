@@ -1,3 +1,4 @@
+import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { Card, Badge } from '@/components/ui'
 import { AnimatedNumber } from '@/components/animated-number'
@@ -13,17 +14,21 @@ export default async function DashboardPage() {
     data: { user },
   } = await supabase.auth.getUser()
 
+  if (!user) redirect('/login')
+
   const { data: profile } = await supabase
     .from('profiles')
     .select('*')
-    .eq('user_id', user!.id)
-    .single()
+    .eq('user_id', user.id)
+    .maybeSingle()
+
+  if (!profile?.household_id) redirect('/onboarding')
 
   const now = new Date()
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10)
   const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10)
 
-  const householdId = profile!.household_id!
+  const householdId = profile.household_id
 
   const [{ data: incomes }, { data: expenses }, { data: benefits }, { data: loans }, { data: goals }, { data: upcomingExpenses }] =
     await Promise.all([
