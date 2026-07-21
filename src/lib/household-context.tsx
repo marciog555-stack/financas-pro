@@ -34,7 +34,4 @@ export function useProfile() {
   return useHousehold().profile
 }
 
-export function ownerLabel(members: Profile[], ownerProfileId: string | null) {
-  if (!ownerProfileId) return 'Compartilhado'
-  return members.find((m) => m.id === ownerProfileId)?.name.trim() || 'Compartilhado'
-}
+export { ownerLabel } from '@/lib/owner-label'

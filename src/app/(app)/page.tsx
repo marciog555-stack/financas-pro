@@ -6,7 +6,7 @@ import { ProgressBar } from '@/components/progress-bar'
 import { Avatar } from '@/components/avatar'
 import { fmtCurrency, fmtDate, todayISO } from '@/lib/format'
 import { EXPENSE_CATEGORIES, type ExpenseCategory } from '@/lib/categories'
-import { ownerLabel } from '@/lib/household-context'
+import { ownerLabel } from '@/lib/owner-label'
 import { TrendingUp, TrendingDown, Wallet, Landmark, Target, CalendarClock, Users } from 'lucide-react'
 import Link from 'next/link'
 
