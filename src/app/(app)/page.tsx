@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { Card, Badge } from '@/components/ui'
 import { AnimatedNumber } from '@/components/animated-number'
 import { ProgressBar } from '@/components/progress-bar'
-import { fmtCurrency, fmtDate } from '@/lib/format'
+import { fmtCurrency, fmtDate, todayISO } from '@/lib/format'
 import { EXPENSE_CATEGORIES, type ExpenseCategory } from '@/lib/categories'
 import { TrendingUp, TrendingDown, Wallet, Landmark, Target, CalendarClock } from 'lucide-react'
 import Link from 'next/link'
@@ -25,13 +25,20 @@ export default async function DashboardPage() {
 
   const householdId = profile!.household_id!
 
-  const [{ data: incomes }, { data: expenses }, { data: benefits }, { data: loans }, { data: goals }] =
+  const [{ data: incomes }, { data: expenses }, { data: benefits }, { data: loans }, { data: goals }, { data: upcomingExpenses }] =
     await Promise.all([
       supabase.from('incomes').select('*').eq('household_id', householdId).gte('date', monthStart).lte('date', monthEnd),
       supabase.from('expenses').select('*').eq('household_id', householdId).gte('due_date', monthStart).lte('due_date', monthEnd),
       supabase.from('benefit_cards').select('*').eq('household_id', householdId),
       supabase.from('loans').select('*').eq('household_id', householdId),
       supabase.from('goals').select('*').eq('household_id', householdId),
+      supabase
+        .from('expenses')
+        .select('*')
+        .eq('household_id', householdId)
+        .eq('is_paid', false)
+        .order('due_date', { ascending: true })
+        .limit(5),
     ])
 
   const totalIncome = (incomes ?? []).reduce((s, i) => s + Number(i.amount), 0)
@@ -43,10 +50,7 @@ export default async function DashboardPage() {
     0
   )
 
-  const upcoming = (expenses ?? [])
-    .filter((e) => !e.is_paid)
-    .sort((a, b) => (a.due_date! < b.due_date! ? -1 : 1))
-    .slice(0, 5)
+  const upcoming = upcomingExpenses ?? []
 
   const positive = balance >= 0
 
@@ -114,6 +118,7 @@ export default async function DashboardPage() {
             <div className="flex flex-col divide-y divide-border">
               {upcoming.map((e) => {
                 const cat = EXPENSE_CATEGORIES[e.category as ExpenseCategory] ?? EXPENSE_CATEGORIES.other
+                const overdue = Boolean(e.due_date && e.due_date < todayISO())
                 return (
                   <div key={e.id} className="flex items-center gap-3 py-2.5">
                     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface-2 text-lg">
@@ -121,9 +126,11 @@ export default async function DashboardPage() {
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium">{e.name}</p>
-                      <p className="text-xs text-foreground/40">Vence {fmtDate(e.due_date)}</p>
+                      <p className="text-xs text-foreground/40">
+                        {overdue ? 'Venceu' : 'Vence'} {fmtDate(e.due_date)}
+                      </p>
                     </div>
-                    <Badge tone="warning">{fmtCurrency(Number(e.amount))}</Badge>
+                    <Badge tone={overdue ? 'danger' : 'warning'}>{fmtCurrency(Number(e.amount))}</Badge>
                   </div>
                 )
               })}

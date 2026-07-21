@@ -40,6 +40,7 @@ export default function RendaPage() {
   const [extractError, setExtractError] = useState<string | null>(null)
   const [grossAmount, setGrossAmount] = useState('')
   const [deductions, setDeductions] = useState<Deduction[]>([])
+  const [saveError, setSaveError] = useState<string | null>(null)
   const [form, setForm] = useState({
     source: '',
     amount: '',
@@ -101,6 +102,7 @@ export default function RendaPage() {
     e.preventDefault()
     if (!form.source || !form.amount) return
     setSaving(true)
+    setSaveError(null)
     let attachmentPath: string | null = null
     if (attachment && profile.user_id) {
       attachmentPath = await uploadAttachment(supabase, profile.user_id, 'incomes', attachment)
@@ -117,14 +119,16 @@ export default function RendaPage() {
       deductions: deductions.length > 0 ? deductions : null,
     })
     setSaving(false)
-    if (!error) {
-      setForm({ source: '', amount: '', date: todayISO(), isRecurring: false, owner: profile.id })
-      setAttachment(null)
-      setGrossAmount('')
-      setDeductions([])
-      setSheetOpen(false)
-      load()
+    if (error) {
+      setSaveError('Não foi possível salvar. Verifique sua conexão e tente novamente.')
+      return
     }
+    setForm({ source: '', amount: '', date: todayISO(), isRecurring: false, owner: profile.id })
+    setAttachment(null)
+    setGrossAmount('')
+    setDeductions([])
+    setSheetOpen(false)
+    load()
   }
 
   async function handleDelete(id: string) {
@@ -169,19 +173,19 @@ export default function RendaPage() {
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium">{income.source}</p>
-                      <p className="text-xs text-foreground/40">
+                      <p className="truncate text-xs text-foreground/40">
                         {fmtDate(income.date)} · {ownerLabel(members, income.owner_profile_id)}
                         {income.is_recurring ? ' · recorrente' : ''}
                       </p>
                       {income.attachment_path && <AttachmentLink path={income.attachment_path} />}
                     </div>
-                    <span className="font-mono text-sm font-semibold text-accent-emerald">
+                    <span className="shrink-0 font-mono text-sm font-semibold text-accent-emerald">
                       {fmtCurrency(Number(income.amount))}
                     </span>
                     {hasBreakdown && (
                       <button
                         onClick={() => setExpandedId(expanded ? null : income.id)}
-                        className="text-foreground/40 transition-colors hover:text-foreground"
+                        className="shrink-0 text-foreground/40 transition-colors hover:text-foreground"
                         aria-label="Ver detalhamento"
                       >
                         {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
@@ -189,7 +193,7 @@ export default function RendaPage() {
                     )}
                     <button
                       onClick={() => handleDelete(income.id)}
-                      className="text-foreground/25 transition-colors hover:text-accent-red"
+                      className="shrink-0 text-foreground/25 transition-colors hover:text-accent-red"
                       aria-label="Excluir"
                     >
                       <Trash2 size={16} />
@@ -296,6 +300,7 @@ export default function RendaPage() {
             />
             Recorrente
           </label>
+          {saveError && <p className="text-xs text-accent-red">{saveError}</p>}
           <Button type="submit" disabled={saving} className="mt-2">
             <Plus size={16} /> Adicionar
           </Button>

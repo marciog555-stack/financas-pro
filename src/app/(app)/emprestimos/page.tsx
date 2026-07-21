@@ -29,6 +29,7 @@ export default function EmprestimosPage() {
   const [attachment, setAttachment] = useState<File | null>(null)
   const [extracting, setExtracting] = useState(false)
   const [extractError, setExtractError] = useState<string | null>(null)
+  const [saveError, setSaveError] = useState<string | null>(null)
   const [form, setForm] = useState({
     name: '',
     totalAmount: '',
@@ -94,6 +95,7 @@ export default function EmprestimosPage() {
     e.preventDefault()
     if (!form.name || !form.totalAmount || !form.totalInstallments || !form.monthlyPayment) return
     setSaving(true)
+    setSaveError(null)
     let attachmentPath: string | null = null
     if (attachment && profile.user_id) {
       attachmentPath = await uploadAttachment(supabase, profile.user_id, 'loans', attachment)
@@ -111,21 +113,23 @@ export default function EmprestimosPage() {
       attachment_path: attachmentPath,
     })
     setSaving(false)
-    if (!error) {
-      setForm({
-        name: '',
-        totalAmount: '',
-        interestRate: '',
-        totalInstallments: '',
-        remainingInstallments: '',
-        monthlyPayment: '',
-        firstDueDate: todayISO(),
-        owner: profile.id,
-      })
-      setAttachment(null)
-      setSheetOpen(false)
-      load()
+    if (error) {
+      setSaveError('Não foi possível salvar. Verifique sua conexão e tente novamente.')
+      return
     }
+    setForm({
+      name: '',
+      totalAmount: '',
+      interestRate: '',
+      totalInstallments: '',
+      remainingInstallments: '',
+      monthlyPayment: '',
+      firstDueDate: todayISO(),
+      owner: profile.id,
+    })
+    setAttachment(null)
+    setSheetOpen(false)
+    load()
   }
 
   const totalOwed = loans.reduce((sum, l) => sum + remainingBalance(l), 0)
@@ -297,6 +301,7 @@ export default function EmprestimosPage() {
             <Label>Dono</Label>
             <OwnerSelect value={form.owner} onChange={(owner) => setForm({ ...form, owner })} />
           </div>
+          {saveError && <p className="text-xs text-accent-red">{saveError}</p>}
           <Button type="submit" disabled={saving} className="mt-2">
             <Plus size={16} /> Adicionar
           </Button>

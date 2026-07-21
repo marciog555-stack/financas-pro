@@ -68,23 +68,25 @@ export function LoanRow({
       <div className="flex items-center gap-3">
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium">{loan.name}</p>
-          <p className="text-xs text-foreground/40">
+          <p className="truncate text-xs text-foreground/40">
             {loan.total_installments - loan.remaining_installments}/{loan.total_installments} parcelas ·{' '}
             {Number(loan.interest_rate)}% a.m. · {ownerLabel(members, loan.owner_profile_id)}
           </p>
           {loan.attachment_path && <AttachmentLink path={loan.attachment_path} />}
         </div>
-        <span className="font-mono text-sm font-semibold">{fmtCurrency(Number(loan.monthly_payment))}/mês</span>
+        <span className="shrink-0 font-mono text-sm font-semibold">
+          {fmtCurrency(Number(loan.monthly_payment))}/mês
+        </span>
         <button
           onClick={() => setExpanded((v) => !v)}
-          className="text-foreground/40 transition-colors hover:text-foreground"
+          className="shrink-0 text-foreground/40 transition-colors hover:text-foreground"
           aria-label="Ver andamento e editar"
         >
           {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
         </button>
         <button
           onClick={handleDelete}
-          className="text-foreground/25 transition-colors hover:text-accent-red"
+          className="shrink-0 text-foreground/25 transition-colors hover:text-accent-red"
           aria-label="Excluir"
         >
           <Trash2 size={16} />
