@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { ChevronDown, ChevronUp, Plus, Trash2, Wallet, RefreshCw } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useHousehold, ownerLabel } from '@/lib/household-context'
+import { OwnerSelect } from '@/components/owner-select'
 import { Button, Input, Select } from '@/components/ui'
 import { fmtCurrency, fmtDate, todayISO } from '@/lib/format'
 import { BENEFIT_TYPES, EXPENSE_CATEGORIES, type BenefitType, type ExpenseCategory } from '@/lib/categories'
@@ -34,6 +35,7 @@ export function BenefitCard({
     amount: '',
     date: todayISO(),
     category: '',
+    owner: benefit.owner_profile_id ?? '',
   })
 
   async function loadTransactions() {
@@ -65,6 +67,7 @@ export function BenefitCard({
       amount,
       date: form.date,
       category: form.category || null,
+      owner_profile_id: form.owner || null,
     })
     if (txError) {
       setSaving(false)
@@ -74,7 +77,7 @@ export function BenefitCard({
     const newBalance = Math.max(0, Number(benefit.balance) - amount)
     await supabase.from('benefit_cards').update({ balance: newBalance }).eq('id', benefit.id)
     setSaving(false)
-    setForm({ description: '', amount: '', date: todayISO(), category: '' })
+    setForm({ description: '', amount: '', date: todayISO(), category: '', owner: benefit.owner_profile_id ?? '' })
     setAdding(false)
     loadTransactions()
     onChanged()
@@ -158,14 +161,17 @@ export function BenefitCard({
                   required
                 />
               </div>
-              <Select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
-                <option value="">Categoria (opcional)</option>
-                {Object.entries(EXPENSE_CATEGORIES).map(([key, { label, emoji }]) => (
-                  <option key={key} value={key}>
-                    {emoji} {label}
-                  </option>
-                ))}
-              </Select>
+              <div className="grid grid-cols-2 gap-2">
+                <Select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
+                  <option value="">Categoria (opcional)</option>
+                  {Object.entries(EXPENSE_CATEGORIES).map(([key, { label, emoji }]) => (
+                    <option key={key} value={key}>
+                      {emoji} {label}
+                    </option>
+                  ))}
+                </Select>
+                <OwnerSelect value={form.owner} onChange={(owner) => setForm({ ...form, owner })} includeShared />
+              </div>
               {saveError && <p className="text-xs text-accent-red">{saveError}</p>}
               <Button type="submit" size="sm" disabled={saving}>
                 Registrar gasto
@@ -188,7 +194,9 @@ export function BenefitCard({
                     {cat && <span>{cat.emoji}</span>}
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-medium text-foreground/80">{tx.description}</p>
-                      <p className="text-foreground/40">{fmtDate(tx.date)}</p>
+                      <p className="text-foreground/40">
+                        {fmtDate(tx.date)} · {ownerLabel(members, tx.owner_profile_id)}
+                      </p>
                     </div>
                     <span className="font-mono font-medium text-accent-red">− {fmtCurrency(Number(tx.amount))}</span>
                     <button

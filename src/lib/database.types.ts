@@ -67,6 +67,7 @@ export type Database = {
           description: string
           household_id: string
           id: string
+          owner_profile_id: string | null
         }
         Insert: {
           amount: number
@@ -77,6 +78,7 @@ export type Database = {
           description: string
           household_id: string
           id?: string
+          owner_profile_id?: string | null
         }
         Update: {
           amount?: number
@@ -87,6 +89,7 @@ export type Database = {
           description?: string
           household_id?: string
           id?: string
+          owner_profile_id?: string | null
         }
         Relationships: [
           {
@@ -101,6 +104,13 @@ export type Database = {
             columns: ["household_id"]
             isOneToOne: false
             referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "benefit_transactions_owner_profile_id_fkey"
+            columns: ["owner_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]

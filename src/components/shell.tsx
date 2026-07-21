@@ -15,6 +15,7 @@ import {
   Plus,
   Home,
   User,
+  Receipt,
 } from 'lucide-react'
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -28,6 +29,7 @@ const NAV = [
   { href: '/despesas', label: 'Despesas', icon: CreditCard },
   { href: '/beneficios', label: 'Benefícios', icon: Wallet },
   { href: '/emprestimos', label: 'Empréstimos', icon: Landmark },
+  { href: '/gastos', label: 'Gastos', icon: Receipt },
   { href: '/metas', label: 'Metas', icon: Target },
   { href: '/relatorios', label: 'Relatórios', icon: BarChart2 },
   { href: '/convidar', label: 'Convidar', icon: UserPlus },
@@ -38,6 +40,7 @@ const MOVIMENTACOES = [
   { href: '/despesas', label: 'Despesas', icon: CreditCard, tone: 'text-accent-red', activeTone: 'bg-accent-red/10 text-accent-red' },
   { href: '/beneficios', label: 'Benefícios', icon: Wallet, tone: 'text-accent-orange', activeTone: 'bg-accent-orange/10 text-accent-orange' },
   { href: '/emprestimos', label: 'Empréstimos', icon: Landmark, tone: 'text-accent-blue', activeTone: 'bg-accent-blue/10 text-accent-blue' },
+  { href: '/gastos', label: 'Gastos', icon: Receipt, tone: 'text-foreground/70', activeTone: 'bg-surface-2 text-foreground' },
 ]
 
 const BOTTOM_TABS = [
