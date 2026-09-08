@@ -5,8 +5,10 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { Plus, Trash2, RefreshCw, CheckCircle2, Circle, CreditCard } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useHousehold, ownerLabel } from '@/lib/household-context'
-import { OwnerSelect } from '@/components/owner-select'
-import { Button, Card, EmptyState, Input, Label, Select } from '@/components/ui'
+import { OwnerChips } from '@/components/owner-chips'
+import { CategoryGrid } from '@/components/category-grid'
+import { AmountInput } from '@/components/amount-input'
+import { Button, Card, EmptyState, Input, Label } from '@/components/ui'
 import { BottomSheet } from '@/components/bottom-sheet'
 import { fmtCurrency, fmtDate, todayISO } from '@/lib/format'
 import { EXPENSE_CATEGORIES, type ExpenseCategory } from '@/lib/categories'
@@ -161,7 +163,9 @@ export default function DespesasPage() {
       </Card>
 
       <BottomSheet open={sheetOpen} onClose={() => setSheetOpen(false)} title="Nova despesa">
-        <form onSubmit={handleAdd} className="flex flex-col gap-3 pb-2">
+        <form onSubmit={handleAdd} className="flex flex-col gap-4 pb-2">
+          <AmountInput value={form.amount} onChange={(amount) => setForm({ ...form, amount })} tone="red" />
+
           <div>
             <Label>Nome</Label>
             <Input
@@ -171,46 +175,30 @@ export default function DespesasPage() {
               required
             />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label>Valor</Label>
-              <Input
-                type="number"
-                step="0.01"
-                min="0"
-                placeholder="0,00"
-                value={form.amount}
-                onChange={(e) => setForm({ ...form, amount: e.target.value })}
-                required
-              />
-            </div>
-            <div>
-              <Label>Vencimento</Label>
-              <Input
-                type="date"
-                value={form.dueDate}
-                onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
-                required
-              />
-            </div>
+
+          <div>
+            <Label>Quem pagou?</Label>
+            <OwnerChips value={form.owner} onChange={(owner) => setForm({ ...form, owner })} includeShared />
           </div>
+
           <div>
             <Label>Categoria</Label>
-            <Select
+            <CategoryGrid
               value={form.category}
-              onChange={(e) => setForm({ ...form, category: e.target.value as ExpenseCategory })}
-            >
-              {Object.entries(EXPENSE_CATEGORIES).map(([key, { label, emoji }]) => (
-                <option key={key} value={key}>
-                  {emoji} {label}
-                </option>
-              ))}
-            </Select>
+              onChange={(category) => setForm({ ...form, category })}
+            />
           </div>
+
           <div>
-            <Label>Dono</Label>
-            <OwnerSelect value={form.owner} onChange={(owner) => setForm({ ...form, owner })} includeShared />
+            <Label>Vencimento</Label>
+            <Input
+              type="date"
+              value={form.dueDate}
+              onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
+              required
+            />
           </div>
+
           {saveError && <p className="text-xs text-accent-red">{saveError}</p>}
           <Button type="submit" disabled={saving} className="mt-2">
             <Plus size={16} /> Adicionar
