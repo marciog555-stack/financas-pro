@@ -3,7 +3,6 @@ import { createClient } from '@/lib/supabase/server'
 import { Card } from '@/components/ui'
 import { MonthlyBarChart, CategoryPieChart } from '@/components/reports-charts'
 import { Sparkline } from '@/components/sparkline'
-import { EXPENSE_CATEGORIES, type ExpenseCategory } from '@/lib/categories'
 import { fmtCurrency } from '@/lib/format'
 import { PIE_COLORS } from '@/lib/chart-colors'
 import { BarChart2 } from 'lucide-react'
@@ -31,10 +30,13 @@ export default async function RelatoriosPage() {
 
   const householdId = profile.household_id
 
-  const [{ data: incomes }, { data: expenses }] = await Promise.all([
+  const [{ data: incomes }, { data: expenses }, { data: expenseCategories }] = await Promise.all([
     supabase.from('incomes').select('*').eq('household_id', householdId).gte('date', rangeStart),
     supabase.from('expenses').select('*').eq('household_id', householdId).gte('due_date', rangeStart),
+    supabase.from('expense_categories').select('*').eq('household_id', householdId),
   ])
+
+  const categories = expenseCategories ?? []
 
   const months: { key: string; month: string; renda: number; despesas: number }[] = []
   for (let i = 5; i >= 0; i--) {
@@ -77,8 +79,8 @@ export default async function RelatoriosPage() {
   const categoryData = Array.from(byCategory.entries())
     .map(([key, value]) => ({
       key,
-      name: EXPENSE_CATEGORIES[key as ExpenseCategory]?.label ?? key,
-      emoji: EXPENSE_CATEGORIES[key as ExpenseCategory]?.emoji ?? '💳',
+      name: categories.find((c) => c.key === key)?.label ?? key,
+      emoji: categories.find((c) => c.key === key)?.emoji ?? '💳',
       value,
       trend: categoryMonthly.get(key) ?? new Array(months.length).fill(0),
     }))

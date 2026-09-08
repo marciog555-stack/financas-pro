@@ -7,7 +7,7 @@ import { useHousehold, ownerLabel } from '@/lib/household-context'
 import { OwnerSelect } from '@/components/owner-select'
 import { Button, Input, Select } from '@/components/ui'
 import { fmtCurrency, fmtDate, todayISO } from '@/lib/format'
-import { BENEFIT_TYPES, EXPENSE_CATEGORIES, type BenefitType, type ExpenseCategory } from '@/lib/categories'
+import { BENEFIT_TYPES, type BenefitType } from '@/lib/categories'
 import type { Tables } from '@/lib/database.types'
 
 type Benefit = Tables<'benefit_cards'>
@@ -22,7 +22,7 @@ export function BenefitCard({
   onChanged: () => void
   onDelete: () => void
 }) {
-  const { members } = useHousehold()
+  const { members, categories } = useHousehold()
   const supabase = createClient()
   const [expanded, setExpanded] = useState(false)
   const [transactions, setTransactions] = useState<Transaction[]>([])
@@ -164,9 +164,9 @@ export function BenefitCard({
               <div className="grid grid-cols-2 gap-2">
                 <Select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
                   <option value="">Categoria (opcional)</option>
-                  {Object.entries(EXPENSE_CATEGORIES).map(([key, { label, emoji }]) => (
-                    <option key={key} value={key}>
-                      {emoji} {label}
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.key}>
+                      {c.emoji} {c.label}
                     </option>
                   ))}
                 </Select>
@@ -188,7 +188,7 @@ export function BenefitCard({
           ) : (
             <div className="flex flex-col divide-y divide-border">
               {transactions.map((tx) => {
-                const cat = tx.category ? EXPENSE_CATEGORIES[tx.category as ExpenseCategory] : null
+                const cat = tx.category ? categories.find((c) => c.key === tx.category) : null
                 return (
                   <div key={tx.id} className="flex items-center gap-2 py-2 text-xs">
                     {cat && <span>{cat.emoji}</span>}

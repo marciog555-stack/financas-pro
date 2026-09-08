@@ -5,11 +5,13 @@ import type { Tables } from '@/lib/database.types'
 
 export type Profile = Tables<'profiles'>
 export type Household = Tables<'households'>
+export type ExpenseCategory = Tables<'expense_categories'>
 
 type HouseholdContextValue = {
   profile: Profile
   household: Household
   members: Profile[]
+  categories: ExpenseCategory[]
 }
 
 const HouseholdContext = createContext<HouseholdContextValue | null>(null)

@@ -2,7 +2,6 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { Card } from '@/components/ui'
 import { fmtCurrency, fmtDate } from '@/lib/format'
-import { EXPENSE_CATEGORIES, type ExpenseCategory } from '@/lib/categories'
 import { ownerLabel } from '@/lib/owner-label'
 import { Receipt } from 'lucide-react'
 
@@ -28,25 +27,32 @@ export default async function GastosPage() {
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10)
   const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10)
 
-  const [{ data: members }, { data: expenses }, { data: benefitTransactions }, { data: benefitCards }] =
-    await Promise.all([
-      supabase.from('profiles').select('*').eq('household_id', householdId).order('created_at'),
-      supabase
-        .from('expenses')
-        .select('*')
-        .eq('household_id', householdId)
-        .gte('due_date', monthStart)
-        .lte('due_date', monthEnd),
-      supabase
-        .from('benefit_transactions')
-        .select('*')
-        .eq('household_id', householdId)
-        .gte('date', monthStart)
-        .lte('date', monthEnd),
-      supabase.from('benefit_cards').select('*').eq('household_id', householdId),
-    ])
+  const [
+    { data: members },
+    { data: expenses },
+    { data: benefitTransactions },
+    { data: benefitCards },
+    { data: expenseCategories },
+  ] = await Promise.all([
+    supabase.from('profiles').select('*').eq('household_id', householdId).order('created_at'),
+    supabase
+      .from('expenses')
+      .select('*')
+      .eq('household_id', householdId)
+      .gte('due_date', monthStart)
+      .lte('due_date', monthEnd),
+    supabase
+      .from('benefit_transactions')
+      .select('*')
+      .eq('household_id', householdId)
+      .gte('date', monthStart)
+      .lte('date', monthEnd),
+    supabase.from('benefit_cards').select('*').eq('household_id', householdId),
+    supabase.from('expense_categories').select('*').eq('household_id', householdId),
+  ])
 
   const cardById = new Map((benefitCards ?? []).map((c) => [c.id, c]))
+  const categories = expenseCategories ?? []
 
   type Entry = {
     id: string
@@ -59,7 +65,7 @@ export default async function GastosPage() {
   }
 
   const fromExpenses: Entry[] = (expenses ?? []).map((e) => {
-    const cat = EXPENSE_CATEGORIES[e.category as ExpenseCategory] ?? EXPENSE_CATEGORIES.other
+    const cat = categories.find((c) => c.key === e.category)
     return {
       id: `expense-${e.id}`,
       date: e.due_date ?? monthStart,
@@ -67,12 +73,12 @@ export default async function GastosPage() {
       amount: Number(e.amount),
       source: 'Dinheiro',
       ownerProfileId: e.owner_profile_id,
-      emoji: cat.emoji,
+      emoji: cat?.emoji ?? '📦',
     }
   })
 
   const fromBenefits: Entry[] = (benefitTransactions ?? []).map((t) => {
-    const cat = t.category ? EXPENSE_CATEGORIES[t.category as ExpenseCategory] : null
+    const cat = t.category ? categories.find((c) => c.key === t.category) : null
     const card = cardById.get(t.benefit_card_id)
     return {
       id: `benefit-${t.id}`,

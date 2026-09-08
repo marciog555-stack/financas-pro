@@ -4,7 +4,6 @@ import { Card, EmptyState } from '@/components/ui'
 import { MonthNav } from '@/components/month-nav'
 import { resolveMonth } from '@/lib/month'
 import { fmtCurrency, fmtDate } from '@/lib/format'
-import { EXPENSE_CATEGORIES, type ExpenseCategory } from '@/lib/categories'
 import { ownerLabel } from '@/lib/owner-label'
 import { TrendingUp } from 'lucide-react'
 
@@ -41,7 +40,7 @@ export default async function MovimentosPage({
   const { monthStart, monthEnd, monthLabelFull, prevParam, nextParam } = resolveMonth(searchParams?.m)
   const householdId = profile.household_id
 
-  const [{ data: expenses }, { data: incomes }, { data: members }] = await Promise.all([
+  const [{ data: expenses }, { data: incomes }, { data: members }, { data: expenseCategories }] = await Promise.all([
     supabase
       .from('expenses')
       .select('*')
@@ -55,7 +54,10 @@ export default async function MovimentosPage({
       .gte('date', monthStart)
       .lte('date', monthEnd),
     supabase.from('profiles').select('*').eq('household_id', householdId),
+    supabase.from('expense_categories').select('*').eq('household_id', householdId),
   ])
+
+  const categories = expenseCategories ?? []
 
   const rows: Row[] = [
     ...(expenses ?? []).map((e) => ({
@@ -65,7 +67,7 @@ export default async function MovimentosPage({
       title: e.name,
       amount: Number(e.amount),
       ownerId: e.owner_profile_id,
-      emoji: (EXPENSE_CATEGORIES[e.category as ExpenseCategory] ?? EXPENSE_CATEGORIES.other).emoji,
+      emoji: categories.find((c) => c.key === e.category)?.emoji ?? '📦',
     })),
     ...(incomes ?? []).map((i) => ({
       id: i.id,

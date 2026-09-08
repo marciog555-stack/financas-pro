@@ -11,14 +11,13 @@ import { AmountInput } from '@/components/amount-input'
 import { Button, Card, EmptyState, Input, Label } from '@/components/ui'
 import { BottomSheet } from '@/components/bottom-sheet'
 import { fmtCurrency, fmtDate, todayISO } from '@/lib/format'
-import { EXPENSE_CATEGORIES, type ExpenseCategory } from '@/lib/categories'
 import { cn } from '@/lib/cn'
 import type { Tables } from '@/lib/database.types'
 
 type Expense = Tables<'expenses'>
 
 export default function DespesasPage() {
-  const { household, members } = useHousehold()
+  const { household, members, categories } = useHousehold()
   const supabase = createClient()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -31,7 +30,7 @@ export default function DespesasPage() {
     name: '',
     amount: '',
     dueDate: todayISO(),
-    category: 'other' as ExpenseCategory,
+    category: categories[0]?.key ?? 'other',
     owner: '',
   })
 
@@ -124,7 +123,7 @@ export default function DespesasPage() {
         ) : (
           <div className="flex flex-col divide-y divide-border">
             {expenses.map((expense) => {
-              const cat = EXPENSE_CATEGORIES[expense.category as ExpenseCategory] ?? EXPENSE_CATEGORIES.other
+              const cat = categories.find((c) => c.key === expense.category)
               const overdue = !expense.is_paid && Boolean(expense.due_date && expense.due_date < todayISO())
               return (
                 <div key={expense.id} className="flex items-center gap-2.5 py-3">
@@ -136,7 +135,7 @@ export default function DespesasPage() {
                     )}
                   </button>
                   <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface-2 text-base">
-                    {cat.emoji}
+                    {cat?.emoji ?? '📦'}
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">{expense.name}</p>
