@@ -23,13 +23,27 @@ function initials(name: string) {
 
 export function Avatar({
   name,
+  src,
   size = 36,
   className,
 }: {
   name: string
+  src?: string | null
   size?: number
   className?: string
 }) {
+  if (src) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={src}
+        alt={name}
+        className={cn('shrink-0 rounded-full object-cover', className)}
+        style={{ width: size, height: size }}
+      />
+    )
+  }
+
   return (
     <span
       className={cn('flex shrink-0 items-center justify-center rounded-full font-semibold', colorFor(name), className)}

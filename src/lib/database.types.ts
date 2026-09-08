@@ -213,18 +213,21 @@ export type Database = {
           id: string
           invite_code: string
           name: string
+          photo_path: string | null
         }
         Insert: {
           created_at?: string
           id?: string
           invite_code: string
           name: string
+          photo_path?: string | null
         }
         Update: {
           created_at?: string
           id?: string
           invite_code?: string
           name?: string
+          photo_path?: string | null
         }
         Relationships: []
       }
@@ -398,6 +401,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          avatar_path: string | null
           created_at: string | null
           household_id: string | null
           id: string
@@ -406,6 +410,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          avatar_path?: string | null
           created_at?: string | null
           household_id?: string | null
           id?: string
@@ -414,6 +419,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          avatar_path?: string | null
           created_at?: string | null
           household_id?: string | null
           id?: string
