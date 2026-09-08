@@ -10,11 +10,10 @@ import {
   Landmark,
   Target,
   BarChart2,
-  UserPlus,
+  Settings,
   LogOut,
   Plus,
   Home,
-  User,
   Receipt,
 } from 'lucide-react'
 import { useState } from 'react'
@@ -34,7 +33,7 @@ const NAV = [
   { href: '/gastos', label: 'Gastos', icon: Receipt },
   { href: '/metas', label: 'Metas', icon: Target },
   { href: '/relatorios', label: 'Relatórios', icon: BarChart2 },
-  { href: '/convidar', label: 'Convidar', icon: UserPlus },
+  { href: '/configuracoes', label: 'Configurações', icon: Settings },
 ]
 
 const MOVIMENTACOES = [
@@ -55,7 +54,13 @@ const BOTTOM_TABS = [
     icon: BarChart2,
     match: (p: string) => p.startsWith('/relatorios'),
   },
-  { key: 'perfil', href: '/convidar', label: 'Perfil', icon: User, match: (p: string) => p.startsWith('/convidar') },
+  {
+    key: 'config',
+    href: '/configuracoes',
+    label: 'Configurações',
+    icon: Settings,
+    match: (p: string) => p.startsWith('/configuracoes'),
+  },
 ] as const
 
 export function Shell({ email, children }: { email: string; children: React.ReactNode }) {
@@ -149,7 +154,7 @@ export function Shell({ email, children }: { email: string; children: React.Reac
 
       <main className="flex-1 p-4 pb-28 lg:p-8 lg:pb-8">
         <div className="mb-5 flex items-center gap-3 animate-fade-in-up">
-          <Link href="/convidar" className="relative shrink-0">
+          <Link href="/configuracoes" className="relative shrink-0">
             <Avatar
               name={household.name}
               src={getAvatarUrl(household.photo_path)}

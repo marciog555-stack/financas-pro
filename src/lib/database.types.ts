@@ -464,6 +464,10 @@ export type Database = {
         Args: { p_household_id: string }
         Returns: string
       }
+      set_split_percentage: {
+        Args: { p_my_percentage: number }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
