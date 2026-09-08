@@ -5,7 +5,8 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { Plus, Trash2, RefreshCw, TrendingUp, Sparkles, ChevronDown, ChevronUp } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useHousehold, ownerLabel } from '@/lib/household-context'
-import { OwnerSelect } from '@/components/owner-select'
+import { OwnerChips } from '@/components/owner-chips'
+import { AmountInput } from '@/components/amount-input'
 import { AttachmentField } from '@/components/attachment-field'
 import { AttachmentLink } from '@/components/attachment-link'
 import { Button, Card, EmptyState, Input, Label } from '@/components/ui'
@@ -256,6 +257,8 @@ export default function RendaPage() {
               </div>
             )}
           </div>
+          <AmountInput value={form.amount} onChange={(amount) => setForm({ ...form, amount })} tone="emerald" />
+
           <div>
             <Label>Origem</Label>
             <Input
@@ -265,32 +268,20 @@ export default function RendaPage() {
               required
             />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label>Valor</Label>
-              <Input
-                type="number"
-                step="0.01"
-                min="0"
-                placeholder="0,00"
-                value={form.amount}
-                onChange={(e) => setForm({ ...form, amount: e.target.value })}
-                required
-              />
-            </div>
-            <div>
-              <Label>Data</Label>
-              <Input
-                type="date"
-                value={form.date}
-                onChange={(e) => setForm({ ...form, date: e.target.value })}
-                required
-              />
-            </div>
-          </div>
+
           <div>
-            <Label>Dono</Label>
-            <OwnerSelect value={form.owner} onChange={(owner) => setForm({ ...form, owner })} />
+            <Label>Quem recebeu?</Label>
+            <OwnerChips value={form.owner} onChange={(owner) => setForm({ ...form, owner })} />
+          </div>
+
+          <div>
+            <Label>Data</Label>
+            <Input
+              type="date"
+              value={form.date}
+              onChange={(e) => setForm({ ...form, date: e.target.value })}
+              required
+            />
           </div>
           <label className="flex items-center gap-2 text-sm text-foreground/70">
             <input
