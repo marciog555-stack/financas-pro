@@ -2,12 +2,26 @@
 
 import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Camera, Check, Copy, Pencil, RefreshCw, UserPlus, Share2, LogOut, X } from 'lucide-react'
+import {
+  Camera,
+  Check,
+  Copy,
+  Pencil,
+  RefreshCw,
+  UserPlus,
+  Share2,
+  LogOut,
+  X,
+  Settings,
+  Scale,
+  Wallet,
+} from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useHousehold } from '@/lib/household-context'
 import { Avatar } from '@/components/avatar'
 import { getAvatarUrl, uploadHouseholdPhoto, uploadProfileAvatar } from '@/lib/avatars'
 import { Button, Card, Input, Label } from '@/components/ui'
+import { fmtCurrency } from '@/lib/format'
 
 function CopyField({ value }: { value: string }) {
   const [copied, setCopied] = useState(false)
@@ -29,11 +43,21 @@ function CopyField({ value }: { value: string }) {
   )
 }
 
-export default function ConvidarPage() {
+export default function ConfiguracoesPage() {
   const { profile, household, members } = useHousehold()
   const router = useRouter()
+  const partner = members.find((m) => m.id !== profile.id) ?? null
   const [inviteCode, setInviteCode] = useState(household.invite_code)
   const [regenerating, setRegenerating] = useState(false)
+
+  const [splitValue, setSplitValue] = useState(Math.round(profile.split_percentage))
+  const [savingSplit, setSavingSplit] = useState(false)
+
+  const [editingLimit, setEditingLimit] = useState(false)
+  const [limitValue, setLimitValue] = useState(
+    household.monthly_budget != null ? String(household.monthly_budget) : ''
+  )
+  const [savingLimit, setSavingLimit] = useState(false)
 
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -121,6 +145,36 @@ export default function ConvidarPage() {
     if (!error && data) setInviteCode(data)
   }
 
+  async function handleSaveSplit() {
+    setSavingSplit(true)
+    const supabase = createClient()
+    const { error } = await supabase.rpc('set_split_percentage', { p_my_percentage: splitValue })
+    setSavingSplit(false)
+    if (error) {
+      alert('Não foi possível salvar a divisão.')
+      return
+    }
+    router.refresh()
+  }
+
+  async function handleSaveLimit() {
+    const parsed = limitValue.trim() === '' ? null : Number(limitValue.replace(',', '.'))
+    if (parsed != null && (Number.isNaN(parsed) || parsed < 0)) return
+    setSavingLimit(true)
+    const supabase = createClient()
+    const { error } = await supabase
+      .from('households')
+      .update({ monthly_budget: parsed })
+      .eq('id', household.id)
+    setSavingLimit(false)
+    if (error) {
+      alert('Não foi possível salvar o limite.')
+      return
+    }
+    setEditingLimit(false)
+    router.refresh()
+  }
+
   async function handleLogout() {
     const supabase = createClient()
     await supabase.auth.signOut()
@@ -130,6 +184,11 @@ export default function ConvidarPage() {
 
   return (
     <div className="flex flex-col gap-5">
+      <div className="flex items-center gap-2 animate-fade-in-up">
+        <Settings size={18} className="text-foreground/60" />
+        <h2 className="text-lg font-semibold tracking-tight">Configurações</h2>
+      </div>
+
       <Card className="animate-fade-in-up">
         {!editing ? (
           <div className="flex items-center gap-3">
@@ -213,6 +272,76 @@ export default function ConvidarPage() {
               </Button>
             </div>
           </div>
+        )}
+      </Card>
+
+      {partner && (
+        <Card className="animate-fade-in-up [animation-delay:40ms]">
+          <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold">
+            <Scale size={16} className="text-accent-purple" /> Divisão dos gastos
+          </h2>
+          <div className="flex items-center gap-3">
+            <Avatar name={profile.name || '?'} src={getAvatarUrl(profile.avatar_path)} size={32} />
+            <input
+              type="range"
+              min={0}
+              max={100}
+              step={5}
+              value={splitValue}
+              onChange={(e) => setSplitValue(Number(e.target.value))}
+              className="h-1.5 flex-1 accent-accent-purple"
+            />
+            <Avatar name={partner.name || '?'} src={getAvatarUrl(partner.avatar_path)} size={32} />
+          </div>
+          <div className="mt-2 flex items-center justify-between text-xs font-medium text-foreground/50">
+            <span>{splitValue}%</span>
+            <span>{100 - splitValue}%</span>
+          </div>
+          {splitValue !== Math.round(profile.split_percentage) && (
+            <Button type="button" size="sm" onClick={handleSaveSplit} disabled={savingSplit} className="mt-3">
+              {savingSplit ? 'Salvando…' : 'Salvar divisão'}
+            </Button>
+          )}
+        </Card>
+      )}
+
+      <Card className="animate-fade-in-up [animation-delay:60ms]">
+        <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold">
+          <Wallet size={16} className="text-accent-emerald" /> Limite de gastos mensal
+        </h2>
+        {editingLimit ? (
+          <div className="flex items-center gap-2">
+            <Input
+              inputMode="decimal"
+              placeholder="Ex: 1000"
+              value={limitValue}
+              onChange={(e) => setLimitValue(e.target.value)}
+              className="flex-1"
+              autoFocus
+            />
+            <Button type="button" size="sm" onClick={handleSaveLimit} disabled={savingLimit}>
+              {savingLimit ? '...' : 'Salvar'}
+            </Button>
+            <Button type="button" size="sm" variant="secondary" onClick={() => setEditingLimit(false)} disabled={savingLimit}>
+              Cancelar
+            </Button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => {
+              setLimitValue(household.monthly_budget != null ? String(household.monthly_budget) : '')
+              setEditingLimit(true)
+            }}
+            className="flex w-full items-center justify-between text-left"
+          >
+            <span className="text-sm text-foreground/60">
+              {household.monthly_budget != null ? fmtCurrency(household.monthly_budget) : 'Sem limite definido'}
+            </span>
+            <span className="flex items-center gap-1 text-xs font-medium text-accent-emerald">
+              <Pencil size={12} /> Editar
+            </span>
+          </button>
         )}
       </Card>
 

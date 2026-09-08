@@ -181,7 +181,7 @@ export default async function DashboardPage({
             {partner ? (
               settleSubtitle
             ) : (
-              <Link href="/convidar" className="text-accent-emerald hover:underline">
+              <Link href="/configuracoes" className="text-accent-emerald hover:underline">
                 Convide seu parceiro pra dividir
               </Link>
             )}
@@ -207,7 +207,7 @@ export default async function DashboardPage({
             />
           ) : (
             <Link
-              href="/convidar"
+              href="/configuracoes"
               className="flex flex-col items-center justify-center gap-1.5 px-2 text-center"
             >
               <span className="flex h-9 w-9 items-center justify-center rounded-full bg-accent-blue/15 text-accent-blue">
