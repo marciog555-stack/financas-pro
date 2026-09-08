@@ -5,13 +5,30 @@ import { AnimatedNumber } from '@/components/animated-number'
 import { ProgressBar } from '@/components/progress-bar'
 import { Avatar } from '@/components/avatar'
 import { getAvatarUrl } from '@/lib/avatars'
+import { SettleGauge } from '@/components/settle-gauge'
+import { SpendingLimitCard } from '@/components/spending-limit-card'
 import { fmtCurrency, fmtDate, todayISO } from '@/lib/format'
 import { EXPENSE_CATEGORIES, type ExpenseCategory } from '@/lib/categories'
 import { ownerLabel } from '@/lib/owner-label'
-import { TrendingUp, TrendingDown, Wallet, Landmark, Target, CalendarClock, Users } from 'lucide-react'
+import {
+  TrendingUp,
+  TrendingDown,
+  Wallet,
+  Landmark,
+  Target,
+  CalendarClock,
+  Users,
+  ChevronLeft,
+  ChevronRight,
+  UserPlus,
+} from 'lucide-react'
 import Link from 'next/link'
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams?: { m?: string }
+}) {
   const supabase = await createClient()
   const {
     data: { user },
@@ -28,8 +45,28 @@ export default async function DashboardPage() {
   if (!profile?.household_id) redirect('/onboarding')
 
   const now = new Date()
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10)
-  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10)
+  let year = now.getFullYear()
+  let month = now.getMonth()
+  const monthParam = searchParams?.m
+  if (monthParam && /^\d{4}-\d{2}$/.test(monthParam)) {
+    const [y, m] = monthParam.split('-').map(Number)
+    year = y
+    month = m - 1
+  }
+  const monthDate = new Date(year, month, 1)
+  const monthStart = monthDate.toISOString().slice(0, 10)
+  const monthEnd = new Date(year, month + 1, 0).toISOString().slice(0, 10)
+  const isCurrentMonth = year === now.getFullYear() && month === now.getMonth()
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
+  const daysLeftInMonth = isCurrentMonth ? daysInMonth - now.getDate() + 1 : null
+
+  const prevMonthDate = new Date(year, month - 1, 1)
+  const nextMonthDate = new Date(year, month + 1, 1)
+  const prevParam = `${prevMonthDate.getFullYear()}-${String(prevMonthDate.getMonth() + 1).padStart(2, '0')}`
+  const nextParam = `${nextMonthDate.getFullYear()}-${String(nextMonthDate.getMonth() + 1).padStart(2, '0')}`
+
+  const monthLabelFull = capitalize(monthDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }))
+  const monthNameOnly = capitalize(monthDate.toLocaleDateString('pt-BR', { month: 'long' }))
 
   const householdId = profile.household_id
 
@@ -41,6 +78,7 @@ export default async function DashboardPage() {
     { data: goals },
     { data: upcomingExpenses },
     { data: members },
+    { data: household },
   ] = await Promise.all([
     supabase.from('incomes').select('*').eq('household_id', householdId).gte('date', monthStart).lte('date', monthEnd),
     supabase.from('expenses').select('*').eq('household_id', householdId).gte('due_date', monthStart).lte('due_date', monthEnd),
@@ -55,6 +93,7 @@ export default async function DashboardPage() {
       .order('due_date', { ascending: true })
       .limit(5),
     supabase.from('profiles').select('*').eq('household_id', householdId).order('created_at'),
+    supabase.from('households').select('monthly_budget').eq('id', householdId).single(),
   ])
 
   const totalIncome = (incomes ?? []).reduce((s, i) => s + Number(i.amount), 0)
@@ -83,8 +122,111 @@ export default async function DashboardPage() {
 
   const positive = balance >= 0
 
+  // Acerto de contas entre você e o parceiro (divisão da casa)
+  const you = profile
+  const partner = (members ?? []).find((m) => m.id !== you.id) ?? null
+
+  function amountBy(list: { amount: number; owner_profile_id: string | null }[] | null, ownerId: string) {
+    return (list ?? []).filter((x) => x.owner_profile_id === ownerId).reduce((s, x) => s + Number(x.amount), 0)
+  }
+
+  const youExpense = amountBy(expenses, you.id)
+  const youSplitPct = you.split_percentage ?? 50
+  const partnerSplitPct = partner ? partner.split_percentage ?? 50 : 100 - youSplitPct
+  const youFairShare = totalExpense * (youSplitPct / 100)
+  const youBalance = youExpense - youFairShare
+  const settleAmount = Math.abs(youBalance)
+  const settleTone: 'even' | 'owed' | 'owes' =
+    !partner || settleAmount < 1 ? 'even' : youBalance > 0 ? 'owed' : 'owes'
+  const gaugeFraction = totalExpense > 0 ? youBalance / totalExpense : 0
+  const settleSubtitle =
+    settleTone === 'even'
+      ? 'Em dia'
+      : settleTone === 'owed'
+        ? `${(partner?.name ?? '').split(' ')[0]} deve pra você`
+        : `Você deve pra ${(partner?.name ?? '').split(' ')[0]}`
+
+  const monthlyBudget = household?.monthly_budget ?? null
+
   return (
     <div className="flex flex-col gap-5">
+      {/* Visão geral: mês, divisão e acerto de contas */}
+      <div className="flex items-center justify-between animate-fade-in-up">
+        <Link
+          href={`/?m=${prevParam}`}
+          className="flex h-8 w-8 items-center justify-center rounded-full text-foreground/40 hover:bg-surface-2 hover:text-foreground"
+          aria-label="Mês anterior"
+        >
+          <ChevronLeft size={18} />
+        </Link>
+        <h1 className="text-base font-semibold">{monthLabelFull}</h1>
+        <Link
+          href={`/?m=${nextParam}`}
+          className="flex h-8 w-8 items-center justify-center rounded-full text-foreground/40 hover:bg-surface-2 hover:text-foreground"
+          aria-label="Próximo mês"
+        >
+          <ChevronRight size={18} />
+        </Link>
+      </div>
+
+      <Card className="animate-fade-in-up [animation-delay:40ms]">
+        <div className="flex justify-center">
+          <Badge tone="neutral">Divisão {Math.round(youSplitPct)}/{Math.round(partnerSplitPct)}</Badge>
+        </div>
+        <SettleGauge fraction={gaugeFraction} tone={settleTone} />
+        <div className="-mt-2 flex flex-col items-center">
+          <p className="text-xs font-medium uppercase tracking-wide text-foreground/40">A acertar</p>
+          <p className="mt-1 text-3xl font-semibold tracking-tight">{fmtCurrency(settleAmount)}</p>
+          <p className="mt-0.5 text-sm text-foreground/45">
+            {partner ? (
+              settleSubtitle
+            ) : (
+              <Link href="/convidar" className="text-accent-emerald hover:underline">
+                Convide seu parceiro pra dividir
+              </Link>
+            )}
+          </p>
+        </div>
+
+        <div className="mt-5 grid grid-cols-2 divide-x divide-border border-t border-border pt-4">
+          <PersonSplitColumn
+            name={you.name || 'Você'}
+            avatarUrl={getAvatarUrl(you.avatar_path)}
+            pct={totalExpense > 0 ? Math.round((youExpense / totalExpense) * 100) : 0}
+            spent={youExpense}
+            income={amountBy(incomes, you.id)}
+          />
+          {partner ? (
+            <PersonSplitColumn
+              name={partner.name || 'Parceiro'}
+              avatarUrl={getAvatarUrl(partner.avatar_path)}
+              pct={totalExpense > 0 ? Math.round((amountBy(expenses, partner.id) / totalExpense) * 100) : 0}
+              spent={amountBy(expenses, partner.id)}
+              income={amountBy(incomes, partner.id)}
+              alignRight
+            />
+          ) : (
+            <Link
+              href="/convidar"
+              className="flex flex-col items-center justify-center gap-1.5 px-2 text-center"
+            >
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-accent-blue/15 text-accent-blue">
+                <UserPlus size={16} />
+              </span>
+              <span className="text-xs font-medium text-foreground/50">Convidar parceiro</span>
+            </Link>
+          )}
+        </div>
+      </Card>
+
+      <SpendingLimitCard
+        householdId={householdId}
+        monthLabel={monthNameOnly}
+        spent={totalExpense}
+        limit={monthlyBudget}
+        daysLeftInMonth={daysLeftInMonth}
+      />
+
       {/* Hero: saldo total */}
       <Card
         className={`animate-fade-in-up overflow-hidden border-0 bg-gradient-to-br p-6 text-white shadow-lg ${
@@ -223,6 +365,44 @@ export default async function DashboardPage() {
             </div>
           )}
         </Card>
+      </div>
+    </div>
+  )
+}
+
+function capitalize(s: string) {
+  return s.charAt(0).toUpperCase() + s.slice(1)
+}
+
+function PersonSplitColumn({
+  name,
+  avatarUrl,
+  pct,
+  spent,
+  income,
+  alignRight,
+}: {
+  name: string
+  avatarUrl: string | null
+  pct: number
+  spent: number
+  income: number
+  alignRight?: boolean
+}) {
+  return (
+    <div className={`flex flex-col gap-2 px-2 ${alignRight ? 'items-end text-right' : 'items-start'}`}>
+      <div className={`flex items-center gap-2 ${alignRight ? 'flex-row-reverse' : ''}`}>
+        <Avatar name={name} src={avatarUrl} size={28} />
+        <span className="truncate text-sm font-medium">{name.split(' ')[0]}</span>
+        <Badge tone="neutral">{pct}%</Badge>
+      </div>
+      <div className="text-xs">
+        <p className="text-foreground/40">
+          Gasto <span className="font-mono text-accent-red">-{fmtCurrency(spent)}</span>
+        </p>
+        <p className="text-foreground/40">
+          Rendas <span className="font-mono text-accent-emerald">{fmtCurrency(income)}</span>
+        </p>
       </div>
     </div>
   )

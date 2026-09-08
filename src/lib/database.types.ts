@@ -212,6 +212,7 @@ export type Database = {
           created_at: string
           id: string
           invite_code: string
+          monthly_budget: number | null
           name: string
           photo_path: string | null
         }
@@ -219,6 +220,7 @@ export type Database = {
           created_at?: string
           id?: string
           invite_code: string
+          monthly_budget?: number | null
           name: string
           photo_path?: string | null
         }
@@ -226,6 +228,7 @@ export type Database = {
           created_at?: string
           id?: string
           invite_code?: string
+          monthly_budget?: number | null
           name?: string
           photo_path?: string | null
         }
@@ -406,6 +409,7 @@ export type Database = {
           household_id: string | null
           id: string
           name: string
+          split_percentage: number
           updated_at: string | null
           user_id: string | null
         }
@@ -415,6 +419,7 @@ export type Database = {
           household_id?: string | null
           id?: string
           name: string
+          split_percentage?: number
           updated_at?: string | null
           user_id?: string | null
         }
@@ -424,6 +429,7 @@ export type Database = {
           household_id?: string | null
           id?: string
           name?: string
+          split_percentage?: number
           updated_at?: string | null
           user_id?: string | null
         }
