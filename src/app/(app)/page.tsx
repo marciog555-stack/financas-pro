@@ -4,6 +4,7 @@ import { Card, Badge } from '@/components/ui'
 import { AnimatedNumber } from '@/components/animated-number'
 import { ProgressBar } from '@/components/progress-bar'
 import { Avatar } from '@/components/avatar'
+import { getAvatarUrl } from '@/lib/avatars'
 import { fmtCurrency, fmtDate, todayISO } from '@/lib/format'
 import { EXPENSE_CATEGORIES, type ExpenseCategory } from '@/lib/categories'
 import { ownerLabel } from '@/lib/owner-label'
@@ -73,7 +74,11 @@ export default async function DashboardPage() {
     spendByOwner.set(key, (spendByOwner.get(key) ?? 0) + Number(e.amount))
   }
   const spendByPerson = Array.from(spendByOwner.entries())
-    .map(([ownerId, amount]) => ({ name: ownerLabel(members ?? [], ownerId), amount }))
+    .map(([ownerId, amount]) => ({
+      name: ownerLabel(members ?? [], ownerId),
+      amount,
+      avatarPath: (members ?? []).find((m) => m.id === ownerId)?.avatar_path ?? null,
+    }))
     .sort((a, b) => b.amount - a.amount)
 
   const positive = balance >= 0
@@ -136,7 +141,7 @@ export default async function DashboardPage() {
               const pct = Math.round((p.amount / totalExpense) * 100)
               return (
                 <div key={p.name} className="flex items-center gap-3">
-                  <Avatar name={p.name} size={32} />
+                  <Avatar name={p.name} src={getAvatarUrl(p.avatarPath)} size={32} />
                   <div className="min-w-0 flex-1">
                     <div className="mb-1 flex items-center justify-between text-xs">
                       <span className="truncate font-medium text-foreground/70">{p.name}</span>
