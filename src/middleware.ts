@@ -32,8 +32,13 @@ export async function middleware(request: NextRequest) {
   const isPasswordRecovery = request.nextUrl.pathname.startsWith('/esqueci-senha') ||
     request.nextUrl.pathname.startsWith('/redefinir-senha')
   const isPublicRoute = isLoginOrSignup || isPasswordRecovery
+  const isMetadataImage =
+    request.nextUrl.pathname === '/icon' ||
+    request.nextUrl.pathname === '/apple-icon' ||
+    request.nextUrl.pathname === '/opengraph-image'
   const isPublicAsset = request.nextUrl.pathname.startsWith('/_next') ||
-    request.nextUrl.pathname.startsWith('/favicon')
+    request.nextUrl.pathname.startsWith('/favicon') ||
+    isMetadataImage
   const isApiRoute = request.nextUrl.pathname.startsWith('/api')
 
   if (!user && isApiRoute) {

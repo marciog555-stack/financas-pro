@@ -14,6 +14,7 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://financas-pro-vert.vercel.app"),
   title: "Finanças Pro",
   description: "Controle financeiro compartilhado para o casal",
 };
