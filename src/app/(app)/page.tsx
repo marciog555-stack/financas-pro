@@ -10,7 +10,6 @@ import { SpendingLimitCard } from '@/components/spending-limit-card'
 import { MonthNav } from '@/components/month-nav'
 import { resolveMonth } from '@/lib/month'
 import { fmtCurrency, fmtDate, todayISO } from '@/lib/format'
-import { EXPENSE_CATEGORIES, type ExpenseCategory } from '@/lib/categories'
 import { ownerLabel } from '@/lib/owner-label'
 import { TrendingUp, TrendingDown, Wallet, Landmark, Target, CalendarClock, Users, UserPlus } from 'lucide-react'
 import Link from 'next/link'
@@ -49,6 +48,7 @@ export default async function DashboardPage({
     { data: upcomingExpenses },
     { data: members },
     { data: household },
+    { data: expenseCategories },
   ] = await Promise.all([
     supabase.from('incomes').select('*').eq('household_id', householdId).gte('date', monthStart).lte('date', monthEnd),
     supabase.from('expenses').select('*').eq('household_id', householdId).gte('due_date', monthStart).lte('due_date', monthEnd),
@@ -64,7 +64,10 @@ export default async function DashboardPage({
       .limit(5),
     supabase.from('profiles').select('*').eq('household_id', householdId).order('created_at'),
     supabase.from('households').select('monthly_budget').eq('id', householdId).single(),
+    supabase.from('expense_categories').select('*').eq('household_id', householdId),
   ])
+
+  const categories = expenseCategories ?? []
 
   const totalIncome = (incomes ?? []).reduce((s, i) => s + Number(i.amount), 0)
   const totalExpense = (expenses ?? []).reduce((s, e) => s + Number(e.amount), 0)
@@ -267,12 +270,12 @@ export default async function DashboardPage({
           ) : (
             <div className="flex flex-col divide-y divide-border">
               {upcoming.map((e) => {
-                const cat = EXPENSE_CATEGORIES[e.category as ExpenseCategory] ?? EXPENSE_CATEGORIES.other
+                const cat = categories.find((c) => c.key === e.category)
                 const overdue = Boolean(e.due_date && e.due_date < todayISO())
                 return (
                   <div key={e.id} className="flex items-center gap-3 py-2.5">
                     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface-2 text-lg">
-                      {cat.emoji}
+                      {cat?.emoji ?? '📦'}
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium">{e.name}</p>

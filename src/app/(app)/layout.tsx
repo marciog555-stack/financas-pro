@@ -20,15 +20,22 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   if (!profile || !profile.household_id) redirect('/onboarding')
 
-  const [{ data: household }, { data: members }] = await Promise.all([
+  const [{ data: household }, { data: members }, { data: categories }] = await Promise.all([
     supabase.from('households').select('*').eq('id', profile.household_id).single(),
     supabase.from('profiles').select('*').eq('household_id', profile.household_id).order('created_at'),
+    supabase
+      .from('expense_categories')
+      .select('*')
+      .eq('household_id', profile.household_id)
+      .order('sort_order'),
   ])
 
   if (!household) redirect('/onboarding')
 
   return (
-    <HouseholdProvider value={{ profile, household, members: members ?? [profile] }}>
+    <HouseholdProvider
+      value={{ profile, household, members: members ?? [profile], categories: categories ?? [] }}
+    >
       <Shell email={user.email ?? ''}>{children}</Shell>
     </HouseholdProvider>
   )
