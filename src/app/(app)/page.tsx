@@ -7,21 +7,12 @@ import { Avatar } from '@/components/avatar'
 import { getAvatarUrl } from '@/lib/avatars'
 import { SettleGauge } from '@/components/settle-gauge'
 import { SpendingLimitCard } from '@/components/spending-limit-card'
+import { MonthNav } from '@/components/month-nav'
+import { resolveMonth } from '@/lib/month'
 import { fmtCurrency, fmtDate, todayISO } from '@/lib/format'
 import { EXPENSE_CATEGORIES, type ExpenseCategory } from '@/lib/categories'
 import { ownerLabel } from '@/lib/owner-label'
-import {
-  TrendingUp,
-  TrendingDown,
-  Wallet,
-  Landmark,
-  Target,
-  CalendarClock,
-  Users,
-  ChevronLeft,
-  ChevronRight,
-  UserPlus,
-} from 'lucide-react'
+import { TrendingUp, TrendingDown, Wallet, Landmark, Target, CalendarClock, Users, UserPlus } from 'lucide-react'
 import Link from 'next/link'
 
 export default async function DashboardPage({
@@ -44,29 +35,8 @@ export default async function DashboardPage({
 
   if (!profile?.household_id) redirect('/onboarding')
 
-  const now = new Date()
-  let year = now.getFullYear()
-  let month = now.getMonth()
-  const monthParam = searchParams?.m
-  if (monthParam && /^\d{4}-\d{2}$/.test(monthParam)) {
-    const [y, m] = monthParam.split('-').map(Number)
-    year = y
-    month = m - 1
-  }
-  const monthDate = new Date(year, month, 1)
-  const monthStart = monthDate.toISOString().slice(0, 10)
-  const monthEnd = new Date(year, month + 1, 0).toISOString().slice(0, 10)
-  const isCurrentMonth = year === now.getFullYear() && month === now.getMonth()
-  const daysInMonth = new Date(year, month + 1, 0).getDate()
-  const daysLeftInMonth = isCurrentMonth ? daysInMonth - now.getDate() + 1 : null
-
-  const prevMonthDate = new Date(year, month - 1, 1)
-  const nextMonthDate = new Date(year, month + 1, 1)
-  const prevParam = `${prevMonthDate.getFullYear()}-${String(prevMonthDate.getMonth() + 1).padStart(2, '0')}`
-  const nextParam = `${nextMonthDate.getFullYear()}-${String(nextMonthDate.getMonth() + 1).padStart(2, '0')}`
-
-  const monthLabelFull = capitalize(monthDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }))
-  const monthNameOnly = capitalize(monthDate.toLocaleDateString('pt-BR', { month: 'long' }))
+  const { monthStart, monthEnd, daysLeftInMonth, prevParam, nextParam, monthLabelFull, monthNameOnly } =
+    resolveMonth(searchParams?.m)
 
   const householdId = profile.household_id
 
@@ -151,23 +121,7 @@ export default async function DashboardPage({
   return (
     <div className="flex flex-col gap-5">
       {/* Visão geral: mês, divisão e acerto de contas */}
-      <div className="flex items-center justify-between animate-fade-in-up">
-        <Link
-          href={`/?m=${prevParam}`}
-          className="flex h-8 w-8 items-center justify-center rounded-full text-foreground/40 hover:bg-surface-2 hover:text-foreground"
-          aria-label="Mês anterior"
-        >
-          <ChevronLeft size={18} />
-        </Link>
-        <h1 className="text-base font-semibold">{monthLabelFull}</h1>
-        <Link
-          href={`/?m=${nextParam}`}
-          className="flex h-8 w-8 items-center justify-center rounded-full text-foreground/40 hover:bg-surface-2 hover:text-foreground"
-          aria-label="Próximo mês"
-        >
-          <ChevronRight size={18} />
-        </Link>
-      </div>
+      <MonthNav label={monthLabelFull} prevParam={prevParam} nextParam={nextParam} basePath="/" />
 
       <Card className="animate-fade-in-up [animation-delay:40ms]">
         <div className="flex justify-center">
@@ -368,10 +322,6 @@ export default async function DashboardPage({
       </div>
     </div>
   )
-}
-
-function capitalize(s: string) {
-  return s.charAt(0).toUpperCase() + s.slice(1)
 }
 
 function PersonSplitColumn({

@@ -15,6 +15,7 @@ import {
   Plus,
   Home,
   Receipt,
+  List,
 } from 'lucide-react'
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -26,6 +27,7 @@ import { getAvatarUrl } from '@/lib/avatars'
 
 const NAV = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/movimentos', label: 'Movimentos', icon: List },
   { href: '/renda', label: 'Renda', icon: TrendingUp },
   { href: '/despesas', label: 'Despesas', icon: CreditCard },
   { href: '/beneficios', label: 'Benefícios', icon: Wallet },
@@ -46,6 +48,13 @@ const MOVIMENTACOES = [
 
 const BOTTOM_TABS = [
   { key: 'inicio', href: '/', label: 'Início', icon: Home, match: (p: string) => p === '/' },
+  {
+    key: 'movimentos',
+    href: '/movimentos',
+    label: 'Movimentos',
+    icon: List,
+    match: (p: string) => p.startsWith('/movimentos'),
+  },
   { key: 'metas', href: '/metas', label: 'Metas', icon: Target, match: (p: string) => p.startsWith('/metas') },
   {
     key: 'relatorios',
@@ -57,7 +66,7 @@ const BOTTOM_TABS = [
   {
     key: 'config',
     href: '/configuracoes',
-    label: 'Configurações',
+    label: 'Ajustes',
     icon: Settings,
     match: (p: string) => p.startsWith('/configuracoes'),
   },
@@ -188,7 +197,7 @@ export function Shell({ email, children }: { email: string; children: React.Reac
 
       {/* Bottom navigation */}
       <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface/90 pb-[env(safe-area-inset-bottom)] backdrop-blur-lg lg:hidden">
-        <div className="grid grid-cols-4">
+        <div className="grid grid-cols-5">
           {BOTTOM_TABS.map(({ key, href, label, icon: Icon, match }) => {
             const active = match(pathname)
             return (
@@ -196,7 +205,7 @@ export function Shell({ email, children }: { email: string; children: React.Reac
                 key={key}
                 href={href}
                 className={cn(
-                  'flex flex-col items-center gap-1 py-2.5 text-[11px] font-medium transition-colors',
+                  'flex flex-col items-center gap-1 px-1 py-2.5 text-center text-[10px] font-medium leading-tight transition-colors',
                   active ? 'text-accent-emerald' : 'text-foreground/40'
                 )}
               >
