@@ -38,14 +38,6 @@ const NAV = [
   { href: '/configuracoes', label: 'Configurações', icon: Settings },
 ]
 
-const MOVIMENTACOES = [
-  { href: '/renda', label: 'Renda', icon: TrendingUp, tone: 'text-accent-emerald', iconBg: 'bg-accent-emerald/15' },
-  { href: '/despesas', label: 'Despesas', icon: CreditCard, tone: 'text-accent-red', iconBg: 'bg-accent-red/15' },
-  { href: '/beneficios', label: 'Benefícios', icon: Wallet, tone: 'text-accent-orange', iconBg: 'bg-accent-orange/15' },
-  { href: '/emprestimos', label: 'Empréstimos', icon: Landmark, tone: 'text-accent-blue', iconBg: 'bg-accent-blue/15' },
-  { href: '/gastos', label: 'Gastos', icon: Receipt, tone: 'text-foreground/70', iconBg: 'bg-surface-2' },
-]
-
 const BOTTOM_TABS = [
   { key: 'inicio', href: '/', label: 'Início', icon: Home, match: (p: string) => p === '/' },
   {
@@ -136,30 +128,6 @@ export function Shell({ email, children }: { email: string; children: React.Reac
             <Wallet size={14} />
           </div>
           <span className="font-semibold">Finanças Pro</span>
-        </div>
-      </div>
-
-      {/* Fileira fixa de atalhos para Renda/Despesas/Benefícios/Empréstimos */}
-      <div className="border-b border-border bg-surface/60 px-4 py-3 lg:hidden">
-        <div className="no-scrollbar flex gap-2 overflow-x-auto">
-          {MOVIMENTACOES.map(({ href, label, icon: Icon, tone, iconBg }) => {
-            const active = pathname.startsWith(href)
-            return (
-              <Link
-                key={href}
-                href={href}
-                className={cn(
-                  'flex shrink-0 items-center gap-2 rounded-2xl border px-3 py-2 text-sm font-medium transition-colors',
-                  active ? 'border-foreground/25 bg-surface-2' : 'border-border hover:bg-surface-2/60'
-                )}
-              >
-                <span className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-xl', iconBg)}>
-                  <Icon size={16} className={tone} />
-                </span>
-                {label}
-              </Link>
-            )
-          })}
         </div>
       </div>
 
