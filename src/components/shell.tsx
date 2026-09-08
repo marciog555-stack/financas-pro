@@ -22,6 +22,8 @@ import { createClient } from '@/lib/supabase/client'
 import { useHousehold } from '@/lib/household-context'
 import { cn } from '@/lib/cn'
 import { QuickAddSheet } from '@/components/quick-add-sheet'
+import { Avatar } from '@/components/avatar'
+import { getAvatarUrl } from '@/lib/avatars'
 
 const NAV = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -146,10 +148,21 @@ export function Shell({ email, children }: { email: string; children: React.Reac
       </div>
 
       <main className="flex-1 p-4 pb-28 lg:p-8 lg:pb-8">
-        <div className="mb-5 flex items-center justify-between animate-fade-in-up">
-          <div>
+        <div className="mb-5 flex items-center gap-3 animate-fade-in-up">
+          <Link href="/convidar" className="relative shrink-0">
+            <Avatar
+              name={household.name}
+              src={getAvatarUrl(household.photo_path)}
+              size={48}
+              className="ring-2 ring-surface"
+            />
+            <span className="absolute -bottom-1 -right-1 rounded-full ring-2 ring-surface">
+              <Avatar name={profile.name || '?'} src={getAvatarUrl(profile.avatar_path)} size={22} />
+            </span>
+          </Link>
+          <div className="min-w-0">
             <h1 className="text-xl font-semibold tracking-tight">Olá, {profile.name.split(' ')[0]}</h1>
-            <p className="text-sm text-foreground/45">
+            <p className="truncate text-sm text-foreground/45">
               {otherMembers.length > 0
                 ? `${household.name} · compartilhada com ${otherMembers.map((m) => m.name.split(' ')[0]).join(', ')}`
                 : `${household.name} · só você por aqui`}
