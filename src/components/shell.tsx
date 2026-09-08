@@ -39,11 +39,11 @@ const NAV = [
 ]
 
 const MOVIMENTACOES = [
-  { href: '/renda', label: 'Renda', icon: TrendingUp, tone: 'text-accent-emerald', activeTone: 'bg-accent-emerald/10 text-accent-emerald' },
-  { href: '/despesas', label: 'Despesas', icon: CreditCard, tone: 'text-accent-red', activeTone: 'bg-accent-red/10 text-accent-red' },
-  { href: '/beneficios', label: 'Benefícios', icon: Wallet, tone: 'text-accent-orange', activeTone: 'bg-accent-orange/10 text-accent-orange' },
-  { href: '/emprestimos', label: 'Empréstimos', icon: Landmark, tone: 'text-accent-blue', activeTone: 'bg-accent-blue/10 text-accent-blue' },
-  { href: '/gastos', label: 'Gastos', icon: Receipt, tone: 'text-foreground/70', activeTone: 'bg-surface-2 text-foreground' },
+  { href: '/renda', label: 'Renda', icon: TrendingUp, tone: 'text-accent-emerald', iconBg: 'bg-accent-emerald/15' },
+  { href: '/despesas', label: 'Despesas', icon: CreditCard, tone: 'text-accent-red', iconBg: 'bg-accent-red/15' },
+  { href: '/beneficios', label: 'Benefícios', icon: Wallet, tone: 'text-accent-orange', iconBg: 'bg-accent-orange/15' },
+  { href: '/emprestimos', label: 'Empréstimos', icon: Landmark, tone: 'text-accent-blue', iconBg: 'bg-accent-blue/15' },
+  { href: '/gastos', label: 'Gastos', icon: Receipt, tone: 'text-foreground/70', iconBg: 'bg-surface-2' },
 ]
 
 const BOTTOM_TABS = [
@@ -140,20 +140,22 @@ export function Shell({ email, children }: { email: string; children: React.Reac
       </div>
 
       {/* Fileira fixa de atalhos para Renda/Despesas/Benefícios/Empréstimos */}
-      <div className="border-b border-border bg-surface/60 px-4 py-2.5 lg:hidden">
+      <div className="border-b border-border bg-surface/60 px-4 py-3 lg:hidden">
         <div className="no-scrollbar flex gap-2 overflow-x-auto">
-          {MOVIMENTACOES.map(({ href, label, icon: Icon, tone, activeTone }) => {
+          {MOVIMENTACOES.map(({ href, label, icon: Icon, tone, iconBg }) => {
             const active = pathname.startsWith(href)
             return (
               <Link
                 key={href}
                 href={href}
                 className={cn(
-                  'flex shrink-0 items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-medium transition-colors',
-                  active ? activeTone : `${tone} hover:bg-surface-2`
+                  'flex shrink-0 items-center gap-2 rounded-2xl border px-3 py-2 text-sm font-medium transition-colors',
+                  active ? 'border-foreground/25 bg-surface-2' : 'border-border hover:bg-surface-2/60'
                 )}
               >
-                <Icon size={14} />
+                <span className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-xl', iconBg)}>
+                  <Icon size={16} className={tone} />
+                </span>
                 {label}
               </Link>
             )
