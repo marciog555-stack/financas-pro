@@ -1,10 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Check, Copy, RefreshCw, UserPlus, Share2, LogOut, User } from 'lucide-react'
+import { Camera, Check, Copy, Pencil, RefreshCw, UserPlus, Share2, LogOut, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useHousehold } from '@/lib/household-context'
+import { Avatar } from '@/components/avatar'
+import { getAvatarUrl, uploadHouseholdPhoto, uploadProfileAvatar } from '@/lib/avatars'
 import { Button, Card, Input, Label } from '@/components/ui'
 
 function CopyField({ value }: { value: string }) {
@@ -33,9 +35,80 @@ export default function ConvidarPage() {
   const [inviteCode, setInviteCode] = useState(household.invite_code)
   const [regenerating, setRegenerating] = useState(false)
 
+  const [editing, setEditing] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [name, setName] = useState(profile.name)
+  const [householdName, setHouseholdName] = useState(household.name)
+  const [profileFile, setProfileFile] = useState<File | null>(null)
+  const [householdFile, setHouseholdFile] = useState<File | null>(null)
+  const profileFileInputRef = useRef<HTMLInputElement>(null)
+  const householdFileInputRef = useRef<HTMLInputElement>(null)
+
   const origin = typeof window !== 'undefined' ? window.location.origin : ''
   const inviteLink = `${origin}/onboarding?invite=${inviteCode}`
   const referralLink = `${origin}/signup`
+
+  const profileAvatarUrl = profileFile
+    ? URL.createObjectURL(profileFile)
+    : getAvatarUrl(profile.avatar_path)
+  const householdPhotoUrl = householdFile
+    ? URL.createObjectURL(householdFile)
+    : getAvatarUrl(household.photo_path)
+
+  function startEditing() {
+    setName(profile.name)
+    setHouseholdName(household.name)
+    setProfileFile(null)
+    setHouseholdFile(null)
+    setEditing(true)
+  }
+
+  function cancelEditing() {
+    setEditing(false)
+    setProfileFile(null)
+    setHouseholdFile(null)
+  }
+
+  async function handleSave() {
+    setSaving(true)
+    const supabase = createClient()
+
+    try {
+      let avatarPath = profile.avatar_path
+      if (profileFile) {
+        avatarPath = await uploadProfileAvatar(supabase, profile.user_id!, profileFile)
+      }
+      let photoPath = household.photo_path
+      if (householdFile) {
+        photoPath = await uploadHouseholdPhoto(supabase, household.id, householdFile)
+      }
+
+      if (name.trim() && name !== profile.name || avatarPath !== profile.avatar_path) {
+        const { error } = await supabase
+          .from('profiles')
+          .update({ name: name.trim() || profile.name, avatar_path: avatarPath })
+          .eq('id', profile.id)
+        if (error) throw error
+      }
+
+      if (householdName.trim() && householdName !== household.name || photoPath !== household.photo_path) {
+        const { error } = await supabase
+          .from('households')
+          .update({ name: householdName.trim() || household.name, photo_path: photoPath })
+          .eq('id', household.id)
+        if (error) throw error
+      }
+
+      setEditing(false)
+      setProfileFile(null)
+      setHouseholdFile(null)
+      router.refresh()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Não foi possível salvar as alterações.')
+    } finally {
+      setSaving(false)
+    }
+  }
 
   async function handleRegenerate() {
     if (!confirm('Isso invalida o link de convite atual. Continuar?')) return
@@ -58,15 +131,89 @@ export default function ConvidarPage() {
   return (
     <div className="flex flex-col gap-5">
       <Card className="animate-fade-in-up">
-        <div className="flex items-center gap-3">
-          <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-accent-emerald/10 text-accent-emerald">
-            <User size={24} />
-          </span>
-          <div className="min-w-0">
-            <p className="truncate text-base font-semibold">{profile.name || 'Sem nome'}</p>
-            <p className="truncate text-sm text-foreground/45">{household.name}</p>
+        {!editing ? (
+          <div className="flex items-center gap-3">
+            <Avatar name={profile.name || '?'} src={profileAvatarUrl} size={56} />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-base font-semibold">{profile.name || 'Sem nome'}</p>
+              <p className="truncate text-sm text-foreground/45">{household.name}</p>
+            </div>
+            <Button type="button" variant="ghost" size="sm" onClick={startEditing}>
+              <Pencil size={14} /> Editar
+            </Button>
           </div>
-        </div>
+        ) : (
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center gap-4">
+              <button
+                type="button"
+                onClick={() => profileFileInputRef.current?.click()}
+                className="group relative shrink-0"
+              >
+                <Avatar name={name || '?'} src={profileAvatarUrl} size={56} />
+                <span className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-accent-emerald text-white shadow-sm">
+                  <Camera size={11} />
+                </span>
+              </button>
+              <input
+                ref={profileFileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => setProfileFile(e.target.files?.[0] ?? null)}
+              />
+              <div className="min-w-0 flex-1">
+                <Label htmlFor="profileName">Seu nome</Label>
+                <Input id="profileName" value={name} onChange={(e) => setName(e.target.value)} />
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <button
+                type="button"
+                onClick={() => householdFileInputRef.current?.click()}
+                className="group relative shrink-0"
+              >
+                <Avatar name={householdName || '?'} src={householdPhotoUrl} size={56} />
+                <span className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-accent-blue text-white shadow-sm">
+                  <Camera size={11} />
+                </span>
+              </button>
+              <input
+                ref={householdFileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => setHouseholdFile(e.target.files?.[0] ?? null)}
+              />
+              <div className="min-w-0 flex-1">
+                <Label htmlFor="householdName">Nome da casa</Label>
+                <Input
+                  id="householdName"
+                  value={householdName}
+                  onChange={(e) => setHouseholdName(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <p className="text-xs text-foreground/40">
+              Toque na foto pra trocar — a de cima é a sua, a de baixo é a do casal/casa.
+            </p>
+
+            <div className="flex gap-2">
+              <Button type="button" onClick={handleSave} disabled={saving} className="flex-1">
+                {saving ? 'Salvando…' : (
+                  <>
+                    <Check size={14} /> Salvar
+                  </>
+                )}
+              </Button>
+              <Button type="button" variant="secondary" onClick={cancelEditing} disabled={saving}>
+                <X size={14} /> Cancelar
+              </Button>
+            </div>
+          </div>
+        )}
       </Card>
 
       <Card className="animate-fade-in-up [animation-delay:80ms]">

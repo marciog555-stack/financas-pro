@@ -28,7 +28,15 @@ Controle financeiro pessoal/casal: renda, despesas, benefícios (VR/VA/VT), empr
 
 ## Banco de dados
 
-O schema (tabelas `profiles`, `incomes`, `expenses`, `benefit_cards`, `loans`, `goals`) já está aplicado no projeto Supabase configurado, com RLS habilitado — cada usuário só acessa seus próprios dados via `profiles.user_id`.
+O schema (tabelas `profiles`, `households`, `incomes`, `expenses`, `benefit_cards`, `benefit_transactions`, `loans`, `loan_installments`, `goals`) está em [`supabase/migrations/0001_init_schema.sql`](./supabase/migrations/0001_init_schema.sql), com RLS habilitado — cada usuário só acessa os dados da sua `household` via `profiles.user_id`.
+
+### Configurando um novo projeto Supabase
+
+1. Crie um novo projeto em [supabase.com](https://supabase.com) (na conta que você quiser usar).
+2. Vá em **SQL Editor** → **New query**, cole o conteúdo de `supabase/migrations/0001_init_schema.sql` e rode. Isso cria as tabelas, as políticas de RLS, as funções (`create_household`, `join_household`, `regenerate_invite_code`) e o bucket de storage `attachments`.
+3. Em **Project Settings → API**, copie a `Project URL` e a `anon public key`.
+4. Cole essas duas informações no `.env.local` (`NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY`) — e nas variáveis de ambiente do deploy (Vercel), se aplicável.
+5. Em **Authentication → URL Configuration**, configure a Site URL e as Redirect URLs (necessário para os links de "esqueci minha senha" funcionarem).
 
 ## Deploy
 
