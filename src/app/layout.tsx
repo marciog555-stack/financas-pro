@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 
@@ -17,6 +17,15 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://financas-pro-vert.vercel.app"),
   title: "Finanças Pro",
   description: "Controle financeiro compartilhado para o casal",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Finanças Pro",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#059669",
 };
 
 export default function RootLayout({
