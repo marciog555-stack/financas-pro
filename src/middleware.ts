@@ -35,7 +35,11 @@ export async function middleware(request: NextRequest) {
   const isMetadataImage =
     request.nextUrl.pathname === '/icon' ||
     request.nextUrl.pathname === '/apple-icon' ||
-    request.nextUrl.pathname === '/opengraph-image'
+    request.nextUrl.pathname === '/opengraph-image' ||
+    request.nextUrl.pathname === '/manifest.webmanifest' ||
+    request.nextUrl.pathname === '/icon-192' ||
+    request.nextUrl.pathname === '/icon-512' ||
+    request.nextUrl.pathname === '/icon-512-maskable'
   const isPublicAsset = request.nextUrl.pathname.startsWith('/_next') ||
     request.nextUrl.pathname.startsWith('/favicon') ||
     isMetadataImage
