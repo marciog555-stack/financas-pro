@@ -17,6 +17,12 @@ import type { Tables } from '@/lib/database.types'
 
 type Loan = Tables<'loans'>
 
+function addMonths(dateStr: string, months: number) {
+  const d = new Date(dateStr + 'T00:00:00')
+  d.setMonth(d.getMonth() + months)
+  return d.toISOString().slice(0, 10)
+}
+
 export default function EmprestimosPage() {
   const { profile, household } = useHousehold()
   const supabase = createClient()
@@ -100,23 +106,47 @@ export default function EmprestimosPage() {
     if (attachment && profile.user_id) {
       attachmentPath = await uploadAttachment(supabase, profile.user_id, 'loans', attachment)
     }
-    const { error } = await supabase.from('loans').insert({
-      household_id: household.id,
-      name: form.name,
-      total_amount: Number(form.totalAmount),
-      interest_rate: Number(form.interestRate || 0),
-      total_installments: Number(form.totalInstallments),
-      remaining_installments: Number(form.remainingInstallments || form.totalInstallments),
-      monthly_payment: Number(form.monthlyPayment),
-      first_due_date: form.firstDueDate,
-      owner_profile_id: form.owner || null,
-      attachment_path: attachmentPath,
-    })
-    setSaving(false)
-    if (error) {
+    const totalInstallments = Number(form.totalInstallments)
+    const alreadyPaid = totalInstallments - Number(form.remainingInstallments || form.totalInstallments)
+
+    const { data: newLoan, error } = await supabase
+      .from('loans')
+      .insert({
+        household_id: household.id,
+        name: form.name,
+        total_amount: Number(form.totalAmount),
+        interest_rate: Number(form.interestRate || 0),
+        total_installments: totalInstallments,
+        remaining_installments: totalInstallments - alreadyPaid,
+        monthly_payment: Number(form.monthlyPayment),
+        first_due_date: form.firstDueDate,
+        owner_profile_id: form.owner || null,
+        attachment_path: attachmentPath,
+      })
+      .select()
+      .single()
+    if (error || !newLoan) {
+      setSaving(false)
       setSaveError('Não foi possível salvar. Verifique sua conexão e tente novamente.')
       return
     }
+
+    const installmentRows = Array.from({ length: totalInstallments }, (_, idx) => {
+      const number = idx + 1
+      const dueDate = addMonths(form.firstDueDate, idx)
+      const isPaid = number <= alreadyPaid
+      return {
+        household_id: household.id,
+        loan_id: newLoan.id,
+        number,
+        amount: Number(form.monthlyPayment),
+        due_date: dueDate,
+        is_paid: isPaid,
+        paid_date: isPaid ? dueDate : null,
+      }
+    })
+    await supabase.from('loan_installments').insert(installmentRows)
+    setSaving(false)
     setForm({
       name: '',
       totalAmount: '',
