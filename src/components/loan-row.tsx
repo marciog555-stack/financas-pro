@@ -156,7 +156,7 @@ export function LoanRow({
           <p className="mb-1 text-xs font-medium text-foreground/50">
             Parcelas ({loan.total_installments - loan.remaining_installments}/{loan.total_installments} pagas)
           </p>
-          <LoanInstallments loanId={loan.id} onToggle={onChanged} />
+          <LoanInstallments loan={loan} onToggle={onChanged} />
         </div>
       )}
     </div>
