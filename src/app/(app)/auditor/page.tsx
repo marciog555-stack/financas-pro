@@ -135,7 +135,7 @@ export default function AuditorPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ month: monthKey, history: newHistory, statement: statement?.transactions ?? [] }),
         },
-        65000
+        280000
       )
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Não foi possível falar com o auditor agora.')
@@ -247,7 +247,10 @@ export default function AuditorPage() {
           {sending && (
             <div className="flex justify-start">
               <div className="flex items-center gap-2 rounded-2xl bg-surface-2 px-3.5 py-2.5 text-sm text-foreground/45">
-                <Loader2 size={14} className="animate-spin" /> Analisando...
+                <Loader2 size={14} className="animate-spin" />
+                {statement && statement.transactions.length > 20
+                  ? 'Conciliando extrato grande, pode levar alguns minutos...'
+                  : 'Analisando...'}
               </div>
             </div>
           )}
