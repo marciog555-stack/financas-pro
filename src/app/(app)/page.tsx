@@ -103,16 +103,32 @@ export default async function DashboardPage({
 
   const youExpense = amountBy(expenses, you.id)
   const partnerExpense = partner ? amountBy(expenses, partner.id) : 0
-  // Gastos "Compartilhados" (sem dono) já saem de um caixa comum — não geram dívida entre os dois.
+  // Gastos "Compartilhados" (sem dono) já saem de um caixa comum — não geram dívida entre os dois,
+  // a menos que alguém tenha registrado quem realmente pagou (paid_by) ao marcar como paga.
   const individualExpense = youExpense + partnerExpense
   const youSplitPct = you.split_percentage ?? 50
   const partnerSplitPct = partner ? partner.split_percentage ?? 50 : 100 - youSplitPct
   const youFairShare = individualExpense * (youSplitPct / 100)
-  const youBalance = youExpense - youFairShare
+
+  let paidBySplitDelta = 0
+  let sharedPaidTotal = 0
+  if (partner) {
+    for (const e of expenses ?? []) {
+      if (e.owner_profile_id || !e.is_paid || !Array.isArray(e.paid_by)) continue
+      const entries = e.paid_by as unknown as { profile_id?: string; amount?: number }[]
+      const youPaid = entries.find((p) => p.profile_id === you.id)?.amount ?? 0
+      const youShare = Number(e.amount) * (youSplitPct / 100)
+      paidBySplitDelta += Number(youPaid) - youShare
+      sharedPaidTotal += Number(e.amount)
+    }
+  }
+
+  const youBalance = youExpense - youFairShare + paidBySplitDelta
   const settleAmount = Math.abs(youBalance)
   const settleTone: 'even' | 'owed' | 'owes' =
     !partner || settleAmount < 1 ? 'even' : youBalance > 0 ? 'owed' : 'owes'
-  const gaugeFraction = individualExpense > 0 ? youBalance / individualExpense : 0
+  const gaugeBase = individualExpense + sharedPaidTotal
+  const gaugeFraction = gaugeBase > 0 ? youBalance / gaugeBase : 0
   const settleSubtitle =
     settleTone === 'even'
       ? 'Em dia'
