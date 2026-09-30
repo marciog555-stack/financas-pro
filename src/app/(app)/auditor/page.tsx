@@ -2,10 +2,11 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { ShieldCheck, Send, Sparkles, Loader2, Paperclip, X, FileCheck2 } from 'lucide-react'
+import { ShieldCheck, Send, Sparkles, Loader2, Paperclip, X, FileCheck2, MessageCircleQuestion } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useHousehold, ownerLabel } from '@/lib/household-context'
 import { Button, Card, Textarea } from '@/components/ui'
+import { OwnerChips } from '@/components/owner-chips'
 import { MonthNav } from '@/components/month-nav'
 import { resolveMonth } from '@/lib/month'
 import { fmtCurrency, fmtDate } from '@/lib/format'
@@ -58,8 +59,12 @@ export default function AuditorPage() {
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [statement, setStatement] = useState<{ fileName: string; bankLabel: string | null; transactions: StatementTx[] } | null>(null)
+  const [statementOwnerId, setStatementOwnerId] = useState('')
   const [extracting, setExtracting] = useState(false)
   const [extractError, setExtractError] = useState<string | null>(null)
+  const [explaining, setExplaining] = useState<{ kind: 'expense' | 'income'; id: string } | null>(null)
+  const [explainText, setExplainText] = useState('')
+  const [resolving, setResolving] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
 
   async function loadPending() {
@@ -111,6 +116,15 @@ export default function AuditorPage() {
       const transactions: StatementTx[] = Array.isArray(data.transactions) ? data.transactions : []
       if (transactions.length === 0) throw new Error('Não encontrei lançamentos nesse arquivo.')
       setStatement({ fileName: file.name, bankLabel: data.bank_label ?? null, transactions })
+
+      const holderName: string | undefined = typeof data.account_holder === 'string' ? data.account_holder.trim().toLowerCase() : undefined
+      const matched = holderName
+        ? members.find((m) => {
+            const name = (m.name || '').trim().toLowerCase()
+            return name && (holderName.includes(name) || name.includes(holderName.split(' ')[0]))
+          })
+        : undefined
+      setStatementOwnerId(matched?.id ?? '')
     } catch (err) {
       setExtractError(err instanceof Error ? err.message : 'Falha ao extrair o extrato')
     } finally {
@@ -133,7 +147,12 @@ export default function AuditorPage() {
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ month: monthKey, history: newHistory, statement: statement?.transactions ?? [] }),
+          body: JSON.stringify({
+            month: monthKey,
+            history: newHistory,
+            statement: statement?.transactions ?? [],
+            statementOwnerProfileId: statement ? statementOwnerId : undefined,
+          }),
         },
         280000
       )
@@ -156,6 +175,22 @@ export default function AuditorPage() {
     send(input)
   }
 
+  function startExplain(kind: 'expense' | 'income', id: string) {
+    setExplaining({ kind, id })
+    setExplainText('')
+  }
+
+  async function submitExplain() {
+    if (!explaining || !explainText.trim()) return
+    setResolving(true)
+    const table = explaining.kind === 'expense' ? 'expenses' : 'incomes'
+    await supabase.from(table).update({ needs_review: false, note: explainText.trim() }).eq('id', explaining.id)
+    setResolving(false)
+    setExplaining(null)
+    setExplainText('')
+    loadPending()
+  }
+
   return (
     <div className="flex flex-col gap-5">
       <div className="animate-fade-in-up">
@@ -174,30 +209,92 @@ export default function AuditorPage() {
             {pendingExpenses.length + pendingIncomes.length === 1 ? 'lançamento pendente de explicação' : 'lançamentos pendentes de explicação'}
           </p>
           <div className="flex flex-col divide-y divide-border">
-            {pendingExpenses.map((e) => (
-              <div key={`e-${e.id}`} className="flex flex-col gap-1 py-2.5 first:pt-0 last:pb-0">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="min-w-0 truncate text-sm font-medium">{e.name}</span>
-                  <span className="shrink-0 font-mono text-sm text-accent-red">-{fmtCurrency(Number(e.amount))}</span>
+            {pendingExpenses.map((e) => {
+              const isExplaining = explaining?.kind === 'expense' && explaining.id === e.id
+              return (
+                <div key={`e-${e.id}`} className="flex flex-col gap-1 py-2.5 first:pt-0 last:pb-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="min-w-0 truncate text-sm font-medium">{e.name}</span>
+                    <span className="shrink-0 font-mono text-sm text-accent-red">-{fmtCurrency(Number(e.amount))}</span>
+                  </div>
+                  <p className="text-xs text-foreground/45">
+                    {categoryLabel(e.category)} · {ownerLabel(members, e.owner_profile_id)} · {fmtDate(e.due_date)}
+                  </p>
+                  {e.note && <p className="mt-0.5 text-xs italic text-accent-orange">&ldquo;{e.note}&rdquo;</p>}
+                  {isExplaining ? (
+                    <div className="mt-1.5 flex flex-col gap-1.5">
+                      <Textarea
+                        autoFocus
+                        value={explainText}
+                        onChange={(ev) => setExplainText(ev.target.value)}
+                        placeholder="Explique aqui o que foi esse gasto..."
+                        rows={2}
+                        className="text-xs"
+                      />
+                      <div className="flex gap-2">
+                        <Button type="button" size="sm" disabled={resolving || !explainText.trim()} onClick={submitExplain}>
+                          Marcar como resolvido
+                        </Button>
+                        <Button type="button" size="sm" variant="ghost" onClick={() => setExplaining(null)}>
+                          Cancelar
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => startExplain('expense', e.id)}
+                      className="mt-1 flex w-fit items-center gap-1 text-xs font-medium text-accent-blue hover:underline"
+                    >
+                      <MessageCircleQuestion size={13} /> Explicar
+                    </button>
+                  )}
                 </div>
-                <p className="text-xs text-foreground/45">
-                  {categoryLabel(e.category)} · {ownerLabel(members, e.owner_profile_id)} · {fmtDate(e.due_date)}
-                </p>
-                {e.note && <p className="mt-0.5 text-xs italic text-accent-orange">&ldquo;{e.note}&rdquo;</p>}
-              </div>
-            ))}
-            {pendingIncomes.map((i) => (
-              <div key={`i-${i.id}`} className="flex flex-col gap-1 py-2.5 first:pt-0 last:pb-0">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="min-w-0 truncate text-sm font-medium">{i.source}</span>
-                  <span className="shrink-0 font-mono text-sm text-accent-emerald">+{fmtCurrency(Number(i.amount))}</span>
+              )
+            })}
+            {pendingIncomes.map((i) => {
+              const isExplaining = explaining?.kind === 'income' && explaining.id === i.id
+              return (
+                <div key={`i-${i.id}`} className="flex flex-col gap-1 py-2.5 first:pt-0 last:pb-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="min-w-0 truncate text-sm font-medium">{i.source}</span>
+                    <span className="shrink-0 font-mono text-sm text-accent-emerald">+{fmtCurrency(Number(i.amount))}</span>
+                  </div>
+                  <p className="text-xs text-foreground/45">
+                    Renda · {ownerLabel(members, i.owner_profile_id)} · {fmtDate(i.date)}
+                  </p>
+                  {i.note && <p className="mt-0.5 text-xs italic text-accent-orange">&ldquo;{i.note}&rdquo;</p>}
+                  {isExplaining ? (
+                    <div className="mt-1.5 flex flex-col gap-1.5">
+                      <Textarea
+                        autoFocus
+                        value={explainText}
+                        onChange={(ev) => setExplainText(ev.target.value)}
+                        placeholder="Explique aqui de onde veio essa renda..."
+                        rows={2}
+                        className="text-xs"
+                      />
+                      <div className="flex gap-2">
+                        <Button type="button" size="sm" disabled={resolving || !explainText.trim()} onClick={submitExplain}>
+                          Marcar como resolvido
+                        </Button>
+                        <Button type="button" size="sm" variant="ghost" onClick={() => setExplaining(null)}>
+                          Cancelar
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => startExplain('income', i.id)}
+                      className="mt-1 flex w-fit items-center gap-1 text-xs font-medium text-accent-blue hover:underline"
+                    >
+                      <MessageCircleQuestion size={13} /> Explicar
+                    </button>
+                  )}
                 </div>
-                <p className="text-xs text-foreground/45">
-                  Renda · {ownerLabel(members, i.owner_profile_id)} · {fmtDate(i.date)}
-                </p>
-                {i.note && <p className="mt-0.5 text-xs italic text-accent-orange">&ldquo;{i.note}&rdquo;</p>}
-              </div>
-            ))}
+              )
+            })}
           </div>
         </Card>
       )}
@@ -219,11 +316,12 @@ export default function AuditorPage() {
                     type="button"
                     variant="secondary"
                     size="sm"
-                    onClick={() =>
+                    onClick={() => {
+                      const ownerName = statementOwnerId ? members.find((m) => m.id === statementOwnerId)?.name?.split(' ')[0] : null
                       send(
-                        `Anexei o extrato bancário${statement.bankLabel ? ` do ${statement.bankLabel}` : ''} com ${statement.transactions.length} lançamentos. Concilie com o que já está no sistema e registre o que estiver faltando — se não souber pra onde foi um gasto ou de onde veio uma renda, registre mesmo assim como pendente (furo de caixa) pra eu revisar depois.`
+                        `Anexei o extrato bancário${statement.bankLabel ? ` do ${statement.bankLabel}` : ''} com ${statement.transactions.length} lançamentos${ownerName ? ` (é da conta do ${ownerName})` : ''}. Concilie com o que já está no sistema e registre o que estiver faltando — se não souber pra onde foi um gasto ou de onde veio uma renda, registre mesmo assim como pendente (furo de caixa) pra eu revisar depois.`
                       )
-                    }
+                    }}
                   >
                     <FileCheck2 size={14} /> Conciliar extrato anexado
                   </Button>
@@ -260,20 +358,29 @@ export default function AuditorPage() {
         {extractError && <p className="text-xs text-accent-red">{extractError}</p>}
 
         {statement ? (
-          <div className="flex items-center gap-2 rounded-xl border border-border bg-surface-2 px-3 py-2 text-xs">
-            <FileCheck2 size={14} className="shrink-0 text-accent-emerald" />
-            <span className="min-w-0 flex-1 truncate">
-              {statement.fileName} · {statement.transactions.length} lançamentos
-              {statement.bankLabel ? ` · ${statement.bankLabel}` : ''}
-            </span>
-            <button
-              type="button"
-              onClick={() => setStatement(null)}
-              className="shrink-0 text-foreground/30 hover:text-accent-red"
-              aria-label="Remover extrato"
-            >
-              <X size={14} />
-            </button>
+          <div className="flex flex-col gap-2.5">
+            <div className="flex items-center gap-2 rounded-xl border border-border bg-surface-2 px-3 py-2 text-xs">
+              <FileCheck2 size={14} className="shrink-0 text-accent-emerald" />
+              <span className="min-w-0 flex-1 truncate">
+                {statement.fileName} · {statement.transactions.length} lançamentos
+                {statement.bankLabel ? ` · ${statement.bankLabel}` : ''}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setStatement(null)
+                  setStatementOwnerId('')
+                }}
+                className="shrink-0 text-foreground/30 hover:text-accent-red"
+                aria-label="Remover extrato"
+              >
+                <X size={14} />
+              </button>
+            </div>
+            <div>
+              <p className="mb-1.5 text-xs text-foreground/50">De quem é essa conta?</p>
+              <OwnerChips value={statementOwnerId} onChange={setStatementOwnerId} includeShared />
+            </div>
           </div>
         ) : (
           <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-dashed border-border px-3 py-2 text-xs text-foreground/50 transition-colors hover:border-accent-emerald/60 hover:text-accent-emerald">
