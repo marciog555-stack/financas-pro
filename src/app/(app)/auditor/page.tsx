@@ -12,6 +12,7 @@ import { fmtCurrency, fmtDate } from '@/lib/format'
 import type { Tables } from '@/lib/database.types'
 
 type Expense = Tables<'expenses'>
+type Income = Tables<'incomes'>
 
 type ChatMessage = {
   role: 'user' | 'assistant'
@@ -48,7 +49,8 @@ export default function AuditorPage() {
   const { year, month, monthStart, monthEnd, monthLabelFull, prevParam, nextParam } = resolveMonth(monthParam)
   const monthKey = `${year}-${String(month + 1).padStart(2, '0')}`
 
-  const [pending, setPending] = useState<Expense[]>([])
+  const [pendingExpenses, setPendingExpenses] = useState<Expense[]>([])
+  const [pendingIncomes, setPendingIncomes] = useState<Income[]>([])
   const [loadingPending, setLoadingPending] = useState(true)
   const [history, setHistory] = useState<unknown[]>([])
   const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -62,15 +64,26 @@ export default function AuditorPage() {
 
   async function loadPending() {
     setLoadingPending(true)
-    const { data } = await supabase
-      .from('expenses')
-      .select('*')
-      .eq('household_id', household.id)
-      .eq('needs_review', true)
-      .gte('due_date', monthStart)
-      .lte('due_date', monthEnd)
-      .order('due_date', { ascending: false })
-    setPending(data ?? [])
+    const [{ data: expenseData }, { data: incomeData }] = await Promise.all([
+      supabase
+        .from('expenses')
+        .select('*')
+        .eq('household_id', household.id)
+        .eq('needs_review', true)
+        .gte('due_date', monthStart)
+        .lte('due_date', monthEnd)
+        .order('due_date', { ascending: false }),
+      supabase
+        .from('incomes')
+        .select('*')
+        .eq('household_id', household.id)
+        .eq('needs_review', true)
+        .gte('date', monthStart)
+        .lte('date', monthEnd)
+        .order('date', { ascending: false }),
+    ])
+    setPendingExpenses(expenseData ?? [])
+    setPendingIncomes(incomeData ?? [])
     setLoadingPending(false)
   }
 
@@ -154,22 +167,35 @@ export default function AuditorPage() {
 
       <MonthNav label={monthLabelFull} prevParam={prevParam} nextParam={nextParam} basePath="/auditor" />
 
-      {!loadingPending && pending.length > 0 && (
+      {!loadingPending && (pendingExpenses.length > 0 || pendingIncomes.length > 0) && (
         <Card className="flex flex-col gap-3 border-accent-orange/30 bg-accent-orange/5 animate-fade-in-up">
           <p className="text-sm font-medium text-foreground">
-            {pending.length} {pending.length === 1 ? 'gasto pendente de explicação' : 'gastos pendentes de explicação'}
+            {pendingExpenses.length + pendingIncomes.length}{' '}
+            {pendingExpenses.length + pendingIncomes.length === 1 ? 'lançamento pendente de explicação' : 'lançamentos pendentes de explicação'}
           </p>
           <div className="flex flex-col divide-y divide-border">
-            {pending.map((e) => (
-              <div key={e.id} className="flex flex-col gap-1 py-2.5 first:pt-0 last:pb-0">
+            {pendingExpenses.map((e) => (
+              <div key={`e-${e.id}`} className="flex flex-col gap-1 py-2.5 first:pt-0 last:pb-0">
                 <div className="flex items-center justify-between gap-2">
                   <span className="min-w-0 truncate text-sm font-medium">{e.name}</span>
-                  <span className="shrink-0 font-mono text-sm">{fmtCurrency(Number(e.amount))}</span>
+                  <span className="shrink-0 font-mono text-sm text-accent-red">-{fmtCurrency(Number(e.amount))}</span>
                 </div>
                 <p className="text-xs text-foreground/45">
                   {categoryLabel(e.category)} · {ownerLabel(members, e.owner_profile_id)} · {fmtDate(e.due_date)}
                 </p>
                 {e.note && <p className="mt-0.5 text-xs italic text-accent-orange">&ldquo;{e.note}&rdquo;</p>}
+              </div>
+            ))}
+            {pendingIncomes.map((i) => (
+              <div key={`i-${i.id}`} className="flex flex-col gap-1 py-2.5 first:pt-0 last:pb-0">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="min-w-0 truncate text-sm font-medium">{i.source}</span>
+                  <span className="shrink-0 font-mono text-sm text-accent-emerald">+{fmtCurrency(Number(i.amount))}</span>
+                </div>
+                <p className="text-xs text-foreground/45">
+                  Renda · {ownerLabel(members, i.owner_profile_id)} · {fmtDate(i.date)}
+                </p>
+                {i.note && <p className="mt-0.5 text-xs italic text-accent-orange">&ldquo;{i.note}&rdquo;</p>}
               </div>
             ))}
           </div>
@@ -195,7 +221,7 @@ export default function AuditorPage() {
                     size="sm"
                     onClick={() =>
                       send(
-                        `Anexei o extrato bancário${statement.bankLabel ? ` do ${statement.bankLabel}` : ''} com ${statement.transactions.length} lançamentos. Compare com o que já está cadastrado no sistema: o que já foi lançado, o que está faltando, e de onde veio qualquer dinheiro novo.`
+                        `Anexei o extrato bancário${statement.bankLabel ? ` do ${statement.bankLabel}` : ''} com ${statement.transactions.length} lançamentos. Concilie com o que já está no sistema e registre o que estiver faltando — se não souber pra onde foi um gasto ou de onde veio uma renda, registre mesmo assim como pendente (furo de caixa) pra eu revisar depois.`
                       )
                     }
                   >
