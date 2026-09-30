@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { ShieldCheck, Send, Sparkles, Loader2 } from 'lucide-react'
+import { ShieldCheck, Send, Sparkles, Loader2, Paperclip, X, FileCheck2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useHousehold, ownerLabel } from '@/lib/household-context'
 import { Button, Card, Textarea } from '@/components/ui'
@@ -16,6 +16,13 @@ type Expense = Tables<'expenses'>
 type ChatMessage = {
   role: 'user' | 'assistant'
   text: string
+}
+
+type StatementTx = {
+  date: string
+  description: string
+  amount: number
+  direction: 'entrada' | 'saida'
 }
 
 export default function AuditorPage() {
@@ -33,6 +40,9 @@ export default function AuditorPage() {
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [statement, setStatement] = useState<{ fileName: string; bankLabel: string | null; transactions: StatementTx[] } | null>(null)
+  const [extracting, setExtracting] = useState(false)
+  const [extractError, setExtractError] = useState<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
 
   async function loadPending() {
@@ -60,6 +70,26 @@ export default function AuditorPage() {
 
   const categoryLabel = (key: string) => categories.find((c) => c.key === key)?.label ?? key
 
+  async function handleAttach(file: File | null) {
+    if (!file) return
+    setExtracting(true)
+    setExtractError(null)
+    try {
+      const body = new FormData()
+      body.append('file', file)
+      const res = await fetch('/api/auditor/extract-statement', { method: 'POST', body })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Falha ao extrair o extrato')
+      const transactions: StatementTx[] = Array.isArray(data.transactions) ? data.transactions : []
+      if (transactions.length === 0) throw new Error('Não encontrei lançamentos nesse arquivo.')
+      setStatement({ fileName: file.name, bankLabel: data.bank_label ?? null, transactions })
+    } catch (err) {
+      setExtractError(err instanceof Error ? err.message : 'Falha ao extrair o extrato')
+    } finally {
+      setExtracting(false)
+    }
+  }
+
   async function send(text: string) {
     const trimmed = text.trim()
     if (!trimmed || sending) return
@@ -73,7 +103,7 @@ export default function AuditorPage() {
       const res = await fetch('/api/auditor', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ month: monthKey, history: newHistory }),
+        body: JSON.stringify({ month: monthKey, history: newHistory, statement: statement?.transactions ?? [] }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Não foi possível falar com o auditor agora.')
@@ -135,9 +165,25 @@ export default function AuditorPage() {
               <p className="max-w-xs text-sm text-foreground/45">
                 Peça pro auditor analisar {monthLabelFull.toLowerCase()} ou pergunte sobre um gasto específico.
               </p>
-              <Button type="button" variant="secondary" size="sm" onClick={() => send(`Analise o extrato de ${monthLabelFull} e me diga se algo precisa de explicação.`)}>
-                <Sparkles size={14} /> Analisar este mês
-              </Button>
+              <div className="flex flex-wrap justify-center gap-2">
+                <Button type="button" variant="secondary" size="sm" onClick={() => send(`Analise o extrato de ${monthLabelFull} e me diga se algo precisa de explicação.`)}>
+                  <Sparkles size={14} /> Analisar este mês
+                </Button>
+                {statement && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() =>
+                      send(
+                        `Anexei o extrato bancário${statement.bankLabel ? ` do ${statement.bankLabel}` : ''} com ${statement.transactions.length} lançamentos. Compare com o que já está cadastrado no sistema: o que já foi lançado, o que está faltando, e de onde veio qualquer dinheiro novo.`
+                      )
+                    }
+                  >
+                    <FileCheck2 size={14} /> Conciliar extrato anexado
+                  </Button>
+                )}
+              </div>
             </div>
           )}
           {messages.map((m, i) => (
@@ -163,6 +209,37 @@ export default function AuditorPage() {
         </div>
 
         {error && <p className="text-xs text-accent-red">{error}</p>}
+        {extractError && <p className="text-xs text-accent-red">{extractError}</p>}
+
+        {statement ? (
+          <div className="flex items-center gap-2 rounded-xl border border-border bg-surface-2 px-3 py-2 text-xs">
+            <FileCheck2 size={14} className="shrink-0 text-accent-emerald" />
+            <span className="min-w-0 flex-1 truncate">
+              {statement.fileName} · {statement.transactions.length} lançamentos
+              {statement.bankLabel ? ` · ${statement.bankLabel}` : ''}
+            </span>
+            <button
+              type="button"
+              onClick={() => setStatement(null)}
+              className="shrink-0 text-foreground/30 hover:text-accent-red"
+              aria-label="Remover extrato"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        ) : (
+          <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-dashed border-border px-3 py-2 text-xs text-foreground/50 transition-colors hover:border-accent-emerald/60 hover:text-accent-emerald">
+            {extracting ? <Loader2 size={14} className="animate-spin" /> : <Paperclip size={14} />}
+            {extracting ? 'Lendo extrato...' : 'Anexar extrato bancário (PDF ou foto)'}
+            <input
+              type="file"
+              accept="application/pdf,image/*"
+              className="hidden"
+              disabled={extracting}
+              onChange={(e) => handleAttach(e.target.files?.[0] ?? null)}
+            />
+          </label>
+        )}
 
         <form onSubmit={handleSubmit} className="flex items-end gap-2">
           <Textarea

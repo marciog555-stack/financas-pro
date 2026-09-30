@@ -62,6 +62,17 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Histórico da conversa vazio.' }, { status: 400 })
   }
 
+  const rawStatement: unknown[] = Array.isArray(body?.statement) ? body.statement : []
+  const statementData = rawStatement
+    .filter((t): t is Record<string, unknown> => typeof t === 'object' && t !== null)
+    .map((t: Record<string, unknown>) => ({
+      data: typeof t.date === 'string' ? t.date : null,
+      descricao: typeof t.description === 'string' ? t.description : '',
+      valor: typeof t.amount === 'number' ? t.amount : Number(t.amount) || 0,
+      direcao: t.direction === 'entrada' ? 'entrada' : 'saida',
+    }))
+    .slice(0, 500)
+
   const { monthStart, monthEnd, monthLabelFull } = resolveMonth(month)
 
   const [{ data: expenses }, { data: incomes }, { data: benefitTx }, { data: members }, { data: categories }] =
@@ -123,9 +134,17 @@ Sua missão:
 3. Quando você decidir que uma despesa precisa de explicação, chame a ferramenta update_expense_review com action="flag" pra essa despesa, com uma pergunta específica. Isso a esconde dos relatórios até ser resolvida.
 4. Quando o usuário responder e a explicação for satisfatória, chame a ferramenta novamente com action="resolve" e um resumo curto da explicação — isso libera a despesa de volta pros relatórios. Se a explicação não for satisfatória, continue questionando (não resolva).
 5. Nunca invente valores ou dados que não estejam no extrato abaixo. Baseie toda observação nos números reais fornecidos.
-6. Seja objetivo: respostas curtas, diretas, sem enrolação. Uma visão geral quando pedido "analisar o mês", ou uma resposta pontual quando a pergunta for específica.
+6. Seja objetivo: respostas curtas, diretas, sem enrolação. Uma visão geral quando pedido "analisar o mês", ou uma resposta pontual quando a pergunta for específica.${
+    statementData.length > 0
+      ? `
+7. O usuário anexou um EXTRATO BANCÁRIO REAL (abaixo). Faça a conciliação: compare cada lançamento do extrato com o que já está cadastrado no sistema (DESPESAS, RENDA, GASTOS DE BENEFÍCIOS). Para cada lançamento do extrato que você não conseguir casar com um lançamento já existente (por valor e data próxima), aponte isso claramente:
+   - Saídas sem lançamento correspondente: liste o quê, quando, quanto, e pergunte pro responsável o que foi e se quer que seja registrado.
+   - Entradas sem lançamento correspondente: identifique se parece salário/pagamento de empresa (descrição com nome de empresa, valor recorrente) ou renda extra/avulsa, e pergunte a origem.
+   - Não marque isso como use da ferramenta update_expense_review — isso é só pra despesas já cadastradas. Pra itens do extrato, apenas relate em texto e pergunte.`
+      : ''
+  }
 
-Resumo do mês:
+Resumo do mês (já cadastrado no sistema):
 - Total de renda: ${fmtCurrency(totalIncome)}
 - Total de despesas: ${fmtCurrency(totalExpense)}
 
@@ -137,6 +156,13 @@ ${JSON.stringify(expensesData, null, 0)}
 
 GASTOS DE BENEFÍCIOS/VALE (${benefitData.length} lançamentos):
 ${JSON.stringify(benefitData, null, 0)}
+${
+  statementData.length > 0
+    ? `
+EXTRATO BANCÁRIO ANEXADO PELO USUÁRIO (${statementData.length} lançamentos, ainda não conciliados com o sistema):
+${JSON.stringify(statementData, null, 0)}`
+    : ''
+}
 
 Datas de referência: hoje é ${fmtDate(new Date().toISOString().slice(0, 10))}.`
 
