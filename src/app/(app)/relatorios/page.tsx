@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { Card } from '@/components/ui'
@@ -5,7 +6,7 @@ import { MonthlyBarChart, CategoryPieChart } from '@/components/reports-charts'
 import { Sparkline } from '@/components/sparkline'
 import { fmtCurrency } from '@/lib/format'
 import { PIE_COLORS } from '@/lib/chart-colors'
-import { BarChart2 } from 'lucide-react'
+import { BarChart2, ShieldAlert } from 'lucide-react'
 
 export default async function RelatoriosPage() {
   const supabase = await createClient()
@@ -30,13 +31,15 @@ export default async function RelatoriosPage() {
 
   const householdId = profile.household_id
 
-  const [{ data: incomes }, { data: expenses }, { data: expenseCategories }] = await Promise.all([
+  const [{ data: incomes }, { data: allExpenses }, { data: expenseCategories }] = await Promise.all([
     supabase.from('incomes').select('*').eq('household_id', householdId).gte('date', rangeStart),
     supabase.from('expenses').select('*').eq('household_id', householdId).gte('due_date', rangeStart),
     supabase.from('expense_categories').select('*').eq('household_id', householdId),
   ])
 
   const categories = expenseCategories ?? []
+  const pendingCount = (allExpenses ?? []).filter((e) => e.needs_review).length
+  const expenses = (allExpenses ?? []).filter((e) => !e.needs_review)
 
   const months: { key: string; month: string; renda: number; despesas: number }[] = []
   for (let i = 5; i >= 0; i--) {
@@ -57,7 +60,7 @@ export default async function RelatoriosPage() {
     const bucket = months.find((m) => m.key === key)
     if (bucket) bucket.renda += Number(income.amount)
   }
-  for (const expense of expenses ?? []) {
+  for (const expense of expenses) {
     if (!expense.due_date) continue
     const key = expense.due_date.slice(0, 7)
     const bucket = months.find((m) => m.key === key)
@@ -67,7 +70,7 @@ export default async function RelatoriosPage() {
   const monthKeys = months.map((m) => m.key)
   const byCategory = new Map<string, number>()
   const categoryMonthly = new Map<string, number[]>()
-  for (const expense of expenses ?? []) {
+  for (const expense of expenses) {
     byCategory.set(expense.category, (byCategory.get(expense.category) ?? 0) + Number(expense.amount))
     if (!expense.due_date) continue
     const idx = monthKeys.indexOf(expense.due_date.slice(0, 7))
@@ -98,6 +101,22 @@ export default async function RelatoriosPage() {
         </h2>
         <p className="text-sm text-foreground/45">Panorama dos últimos 6 meses</p>
       </div>
+
+      {pendingCount > 0 && (
+        <Link href="/auditor" className="block animate-fade-in-up">
+          <Card className="flex items-center gap-3 border-accent-orange/30 bg-accent-orange/5">
+            <ShieldAlert size={20} className="shrink-0 text-accent-orange" />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium text-foreground">
+                {pendingCount} {pendingCount === 1 ? 'despesa aguardando' : 'despesas aguardando'} explicação
+              </p>
+              <p className="text-xs text-foreground/45">
+                O Auditor IA marcou {pendingCount === 1 ? 'esse gasto' : 'esses gastos'} como suspeito. Toque para responder e liberá-{pendingCount === 1 ? 'lo' : 'los'} nos relatórios.
+              </p>
+            </div>
+          </Card>
+        </Link>
+      )}
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 animate-fade-in-up [animation-delay:80ms]">
         <Card>

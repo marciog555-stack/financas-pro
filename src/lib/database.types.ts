@@ -164,6 +164,8 @@ export type Database = {
           is_paid: boolean | null
           is_recurring: boolean
           name: string
+          needs_review: boolean
+          note: string | null
           owner_profile_id: string | null
         }
         Insert: {
@@ -176,6 +178,8 @@ export type Database = {
           is_paid?: boolean | null
           is_recurring?: boolean
           name: string
+          needs_review?: boolean
+          note?: string | null
           owner_profile_id?: string | null
         }
         Update: {
@@ -188,6 +192,8 @@ export type Database = {
           is_paid?: boolean | null
           is_recurring?: boolean
           name?: string
+          needs_review?: boolean
+          note?: string | null
           owner_profile_id?: string | null
         }
         Relationships: [

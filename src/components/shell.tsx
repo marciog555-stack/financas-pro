@@ -16,6 +16,7 @@ import {
   Home,
   Receipt,
   List,
+  ShieldCheck,
 } from 'lucide-react'
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -35,6 +36,7 @@ const NAV = [
   { href: '/gastos', label: 'Gastos', icon: Receipt },
   { href: '/metas', label: 'Metas', icon: Target },
   { href: '/relatorios', label: 'Relatórios', icon: BarChart2 },
+  { href: '/auditor', label: 'Auditor IA', icon: ShieldCheck },
   { href: '/configuracoes', label: 'Configurações', icon: Settings },
 ]
 
