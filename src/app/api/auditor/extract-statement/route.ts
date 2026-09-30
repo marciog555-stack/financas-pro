@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
 export const runtime = 'nodejs'
+export const maxDuration = 60
 
 const SUPPORTED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp'])
 
@@ -75,9 +76,9 @@ export async function POST(request: NextRequest) {
 
   let message: Anthropic.Message
   try {
-    message = await anthropic.messages.create({
+    const stream = anthropic.messages.stream({
       model: 'claude-opus-4-8',
-      max_tokens: 8192,
+      max_tokens: 16000,
       tools: [EXTRACT_TOOL],
       tool_choice: { type: 'tool', name: 'extract_bank_statement' },
       messages: [
@@ -95,17 +96,21 @@ export async function POST(request: NextRequest) {
         },
       ],
     })
+    message = await stream.finalMessage()
   } catch (err) {
     console.error('Anthropic statement extraction error', err)
-    return NextResponse.json({ error: 'Falha ao processar o extrato com IA.' }, { status: 502 })
+    return NextResponse.json(
+      { error: 'Falha ao processar o extrato com IA. Tente novamente ou envie um arquivo menor (ex: só o mês desejado).' },
+      { status: 502 }
+    )
   }
 
   const toolUse = message.content.find(
     (block): block is Anthropic.ToolUseBlock => block.type === 'tool_use'
   )
-  if (!toolUse) {
+  if (!toolUse || message.stop_reason === 'max_tokens') {
     return NextResponse.json(
-      { error: 'Não foi possível extrair os lançamentos do extrato.' },
+      { error: 'O extrato é muito extenso pra ler de uma vez. Tente enviar um período menor (ex: só um mês por vez).' },
       { status: 422 }
     )
   }

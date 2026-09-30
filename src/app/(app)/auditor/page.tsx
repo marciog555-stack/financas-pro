@@ -25,6 +25,21 @@ type StatementTx = {
   direction: 'entrada' | 'saida'
 }
 
+async function fetchWithTimeout(input: string, init: RequestInit, timeoutMs: number) {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    return await fetch(input, { ...init, signal: controller.signal })
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      throw new Error('A IA demorou demais pra responder. Tente de novo — se for um extrato grande, tente um período menor.')
+    }
+    throw err
+  } finally {
+    clearTimeout(timeout)
+  }
+}
+
 export default function AuditorPage() {
   const { household, members, categories } = useHousehold()
   const supabase = createClient()
@@ -77,7 +92,7 @@ export default function AuditorPage() {
     try {
       const body = new FormData()
       body.append('file', file)
-      const res = await fetch('/api/auditor/extract-statement', { method: 'POST', body })
+      const res = await fetchWithTimeout('/api/auditor/extract-statement', { method: 'POST', body }, 65000)
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Falha ao extrair o extrato')
       const transactions: StatementTx[] = Array.isArray(data.transactions) ? data.transactions : []
@@ -100,11 +115,15 @@ export default function AuditorPage() {
     setInput('')
     setSending(true)
     try {
-      const res = await fetch('/api/auditor', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ month: monthKey, history: newHistory, statement: statement?.transactions ?? [] }),
-      })
+      const res = await fetchWithTimeout(
+        '/api/auditor',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ month: monthKey, history: newHistory, statement: statement?.transactions ?? [] }),
+        },
+        65000
+      )
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Não foi possível falar com o auditor agora.')
       setHistory(data.history ?? newHistory)
