@@ -167,6 +167,7 @@ export type Database = {
           needs_review: boolean
           note: string | null
           owner_profile_id: string | null
+          paid_by: Json | null
         }
         Insert: {
           amount: number
@@ -181,6 +182,7 @@ export type Database = {
           needs_review?: boolean
           note?: string | null
           owner_profile_id?: string | null
+          paid_by?: Json | null
         }
         Update: {
           amount?: number
@@ -195,6 +197,7 @@ export type Database = {
           needs_review?: boolean
           note?: string | null
           owner_profile_id?: string | null
+          paid_by?: Json | null
         }
         Relationships: [
           {
