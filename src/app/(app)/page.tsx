@@ -48,7 +48,6 @@ export default async function DashboardPage({
     { data: benefits },
     { data: loans },
     { data: goals },
-    { data: upcomingExpenses },
     { data: members },
     { data: household },
     { data: expenseCategories },
@@ -58,13 +57,6 @@ export default async function DashboardPage({
     supabase.from('benefit_cards').select('*').eq('household_id', householdId),
     supabase.from('loans').select('*').eq('household_id', householdId),
     supabase.from('goals').select('*').eq('household_id', householdId),
-    supabase
-      .from('expenses')
-      .select('*')
-      .eq('household_id', householdId)
-      .eq('is_paid', false)
-      .order('due_date', { ascending: true })
-      .limit(5),
     supabase.from('profiles').select('*').eq('household_id', householdId).order('created_at'),
     supabase.from('households').select('monthly_budget').eq('id', householdId).single(),
     supabase.from('expense_categories').select('*').eq('household_id', householdId),
@@ -81,7 +73,10 @@ export default async function DashboardPage({
     0
   )
 
-  const upcoming = upcomingExpenses ?? []
+  const upcoming = (expenses ?? [])
+    .filter((e) => !e.is_paid)
+    .sort((a, b) => (a.due_date ?? '').localeCompare(b.due_date ?? ''))
+    .slice(0, 5)
 
   const spendByOwner = new Map<string | null, number>()
   for (const e of expenses ?? []) {
@@ -267,7 +262,10 @@ export default async function DashboardPage({
             <h2 className="flex items-center gap-2 text-sm font-semibold">
               <CalendarClock size={15} className="text-foreground/40" /> Contas a vencer
             </h2>
-            <Link href="/despesas" className="text-xs font-medium text-accent-emerald hover:underline">
+            <Link
+              href={searchParams?.m ? `/despesas?m=${searchParams.m}` : '/despesas'}
+              className="text-xs font-medium text-accent-emerald hover:underline"
+            >
               Ver todas
             </Link>
           </div>
