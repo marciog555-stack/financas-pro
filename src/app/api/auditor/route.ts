@@ -121,6 +121,10 @@ export async function POST(request: NextRequest) {
     }))
     .slice(0, 500)
 
+  // '' = explicitamente compartilhado, string = id de um membro, undefined = não informado (extrato não anexado)
+  const statementOwnerProfileId: string | undefined =
+    typeof body?.statementOwnerProfileId === 'string' ? body.statementOwnerProfileId : undefined
+
   const { monthStart, monthEnd, monthLabelFull } = resolveMonth(month)
 
   const [{ data: expenses }, { data: incomes }, { data: benefitTx }, { data: members }, { data: categories }] =
@@ -167,6 +171,12 @@ export async function POST(request: NextRequest) {
   const membersData = (members ?? []).map((m) => ({ id: m.id, nome: m.name || 'Sem nome' }))
   const categoriesData = (categories ?? []).map((c) => ({ key: c.key, label: c.label }))
 
+  const statementOwnerValid =
+    statementOwnerProfileId === '' || (members ?? []).some((m) => m.id === statementOwnerProfileId)
+  const statementOwnerResolved = statementOwnerValid ? statementOwnerProfileId : undefined
+  const statementOwnerLabel =
+    statementOwnerResolved === undefined ? null : statementOwnerResolved === '' ? 'Compartilhado' : ownerName(statementOwnerResolved)
+
   const benefitData = (benefitTx ?? []).map((t) => ({
     id: t.id,
     descricao: t.description,
@@ -193,7 +203,11 @@ Sua missão:
 7. O usuário anexou um EXTRATO BANCÁRIO REAL (abaixo). Faça a conciliação: compare cada lançamento do extrato com o que já está cadastrado (DESPESAS, RENDA, GASTOS DE BENEFÍCIOS) por valor e data próxima. Para todo lançamento do extrato sem correspondência, REGISTRE no sistema usando a ferramenta register_transactions — não fique só perguntando em texto, o usuário prefere ver o lançamento já criado e revisar depois:
    - Saída sem correspondência: crie uma despesa (register_transactions.expenses). Se der pra identificar o que foi (nome de loja/serviço reconhecível na descrição), registre normal, sem needs_review. Se não estiver claro pra onde foi esse dinheiro, registre mesmo assim com needs_review=true e note começando com "Furo de caixa:" explicando o que falta esclarecer — isso vira um alerta pro responsável.
    - Entrada sem correspondência: crie uma renda (register_transactions.incomes). Se a descrição indicar claramente a origem (nome de empresa, "salário", etc.), registre normal. Se não estiver clara a origem, registre com needs_review=true e note explicando a dúvida (ex: "PIX recebido de CPF/nome desconhecido, origem não identificada").
-   - owner_profile_id: use o id de um dos MEMBROS DA CASA se a descrição indicar claramente de quem é (ex: nome da pessoa no PIX, cartão de uma pessoa específica); senão omita (fica compartilhado).
+   - owner_profile_id: ${
+     statementOwnerLabel
+       ? `este extrato é do(a) ${statementOwnerLabel} — o sistema já vai atribuir automaticamente todos os lançamentos criados a partir dele a essa pessoa, então não precisa se preocupar com esse campo.`
+       : 'use o id de um dos MEMBROS DA CASA se a descrição indicar claramente de quem é (ex: nome da pessoa no PIX, cartão de uma pessoa específica); senão omita (fica compartilhado).'
+   }
    - category: escolha a categoria mais adequada dentre CATEGORIAS; se não souber, use "other".
    - Depois de registrar, resuma em texto o que foi criado (quantas despesas, quantas rendas, quantas ficaram como furo de caixa/pendentes) — não repita cada lançamento em detalhe, só o resumo.
    - Não use update_expense_review para itens do extrato — essa ferramenta é só para despesas que já existiam antes.`
@@ -291,7 +305,12 @@ Datas de referência: hoje é ${fmtDate(new Date().toISOString().slice(0, 10))}.
         amount: e.amount,
         category: e.category && validCategoryKeys.has(e.category) ? e.category : 'other',
         due_date: e.date,
-        owner_profile_id: e.owner_profile_id && validOwnerIds.has(e.owner_profile_id) ? e.owner_profile_id : null,
+        owner_profile_id:
+          statementOwnerResolved !== undefined
+            ? statementOwnerResolved || null
+            : e.owner_profile_id && validOwnerIds.has(e.owner_profile_id)
+              ? e.owner_profile_id
+              : null,
         is_paid: true,
         is_recurring: false,
         needs_review: Boolean(e.needs_review),
@@ -302,7 +321,12 @@ Datas de referência: hoje é ${fmtDate(new Date().toISOString().slice(0, 10))}.
         source: i.source,
         amount: i.amount,
         date: i.date,
-        owner_profile_id: i.owner_profile_id && validOwnerIds.has(i.owner_profile_id) ? i.owner_profile_id : null,
+        owner_profile_id:
+          statementOwnerResolved !== undefined
+            ? statementOwnerResolved || null
+            : i.owner_profile_id && validOwnerIds.has(i.owner_profile_id)
+              ? i.owner_profile_id
+              : null,
         is_recurring: false,
         needs_review: Boolean(i.needs_review),
         note: i.needs_review ? i.note ?? null : null,

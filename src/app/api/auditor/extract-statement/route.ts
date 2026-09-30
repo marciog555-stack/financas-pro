@@ -14,6 +14,7 @@ const EXTRACT_TOOL: Anthropic.Tool = {
     type: 'object',
     properties: {
       bank_label: { type: 'string', description: 'Nome do banco/conta, se identificável (ex: "Nubank", "Banco do Brasil")' },
+      account_holder: { type: 'string', description: 'Nome completo do titular da conta, exatamente como aparece impresso no extrato (ex: "MARCIO GOMES DA SILVA"). Omita se não aparecer.' },
       transactions: {
         type: 'array',
         description: 'Todos os lançamentos do extrato, na ordem em que aparecem',
@@ -90,7 +91,7 @@ export async function POST(request: NextRequest) {
               : { type: 'image', source: documentBlock as Anthropic.ImageBlockParam['source'] },
             {
               type: 'text',
-              text: 'Extraia todos os lançamentos (entradas e saídas) deste extrato bancário, na ordem em que aparecem.',
+              text: 'Extraia todos os lançamentos (entradas e saídas) deste extrato bancário, na ordem em que aparecem, e o nome do titular da conta se aparecer impresso no documento.',
             },
           ],
         },
