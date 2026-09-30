@@ -5,7 +5,7 @@ import { resolveMonth } from '@/lib/month'
 import { fmtCurrency, fmtDate } from '@/lib/format'
 
 export const runtime = 'nodejs'
-export const maxDuration = 60
+export const maxDuration = 300
 
 const REVIEW_TOOL: Anthropic.Tool = {
   name: 'update_expense_review',
@@ -233,7 +233,7 @@ Datas de referência: hoje é ${fmtDate(new Date().toISOString().slice(0, 10))}.
     const anthropic = new Anthropic()
     const stream = anthropic.messages.stream({
       model: 'claude-opus-5-5',
-      max_tokens: 4096,
+      max_tokens: 24000,
       thinking: { type: 'adaptive' },
       output_config: { effort: 'medium' },
       system: systemPrompt,
@@ -244,6 +244,16 @@ Datas de referência: hoje é ${fmtDate(new Date().toISOString().slice(0, 10))}.
   } catch (err) {
     console.error('Auditor IA error', err)
     return NextResponse.json({ error: 'Não foi possível falar com o auditor agora.' }, { status: 502 })
+  }
+
+  if (message.stop_reason === 'max_tokens') {
+    return NextResponse.json(
+      {
+        error:
+          'A resposta ficou grande demais pra processar de uma vez (extrato com muitos lançamentos). Tente pedir a conciliação de um período menor, ou peça "continue" pra tentar de novo.',
+      },
+      { status: 422 }
+    )
   }
 
   const toolUses = message.content.filter((b): b is Anthropic.ToolUseBlock => b.type === 'tool_use')
