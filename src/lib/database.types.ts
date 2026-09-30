@@ -162,6 +162,7 @@ export type Database = {
           household_id: string
           id: string
           is_paid: boolean | null
+          is_recurring: boolean
           name: string
           owner_profile_id: string | null
         }
@@ -173,6 +174,7 @@ export type Database = {
           household_id: string
           id?: string
           is_paid?: boolean | null
+          is_recurring?: boolean
           name: string
           owner_profile_id?: string | null
         }
@@ -184,6 +186,7 @@ export type Database = {
           household_id?: string
           id?: string
           is_paid?: boolean | null
+          is_recurring?: boolean
           name?: string
           owner_profile_id?: string | null
         }
