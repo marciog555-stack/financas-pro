@@ -18,7 +18,7 @@ import {
   List,
   ShieldCheck,
 } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useHousehold } from '@/lib/household-context'
 import { cn } from '@/lib/cn'
@@ -71,6 +71,17 @@ export function Shell({ email, children }: { email: string; children: React.Reac
   const router = useRouter()
   const { profile, household, members } = useHousehold()
   const [quickAddOpen, setQuickAddOpen] = useState(false)
+  const [pendingReview, setPendingReview] = useState(0)
+
+  useEffect(() => {
+    const supabase = createClient()
+    supabase
+      .from('expenses')
+      .select('id', { count: 'exact', head: true })
+      .eq('household_id', household.id)
+      .eq('needs_review', true)
+      .then(({ count }) => setPendingReview(count ?? 0))
+  }, [household.id])
 
   async function handleLogout() {
     const supabase = createClient()
@@ -96,6 +107,9 @@ export function Shell({ email, children }: { email: string; children: React.Reac
           >
             <Icon size={17} />
             {label}
+            {href === '/auditor' && pendingReview > 0 && (
+              <span className="ml-auto flex h-2.5 w-2.5 shrink-0 rounded-full bg-accent-orange" />
+            )}
           </Link>
         )
       })}
@@ -131,6 +145,12 @@ export function Shell({ email, children }: { email: string; children: React.Reac
           </div>
           <span className="font-semibold">Finanças Pro</span>
         </div>
+        <Link href="/auditor" aria-label="Auditor Fiscal IA" className="relative flex h-9 w-9 items-center justify-center rounded-full text-foreground/60 hover:bg-surface-2 hover:text-foreground">
+          <ShieldCheck size={19} />
+          {pendingReview > 0 && (
+            <span className="absolute right-1 top-1 flex h-2.5 w-2.5 items-center justify-center rounded-full bg-accent-orange ring-2 ring-surface" />
+          )}
+        </Link>
       </div>
 
       <main className="flex-1 p-4 pb-28 lg:p-8 lg:pb-8">
