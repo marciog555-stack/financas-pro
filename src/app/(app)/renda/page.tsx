@@ -11,7 +11,9 @@ import { AttachmentField } from '@/components/attachment-field'
 import { AttachmentLink } from '@/components/attachment-link'
 import { Button, Card, EmptyState, Input, Label } from '@/components/ui'
 import { BottomSheet } from '@/components/bottom-sheet'
-import { fmtCurrency, fmtDate, todayISO } from '@/lib/format'
+import { MonthNav } from '@/components/month-nav'
+import { resolveMonth, defaultDateForMonth } from '@/lib/month'
+import { fmtCurrency, fmtDate } from '@/lib/format'
 import { uploadAttachment } from '@/lib/attachments'
 import type { Tables } from '@/lib/database.types'
 
@@ -31,6 +33,8 @@ export default function RendaPage() {
   const supabase = createClient()
   const router = useRouter()
   const searchParams = useSearchParams()
+  const monthParam = searchParams.get('m') ?? undefined
+  const { monthStart, monthEnd, monthLabelFull, prevParam, nextParam } = resolveMonth(monthParam)
   const [incomes, setIncomes] = useState<Income[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -45,7 +49,7 @@ export default function RendaPage() {
   const [form, setForm] = useState({
     source: '',
     amount: '',
-    date: todayISO(),
+    date: defaultDateForMonth(monthStart, monthEnd),
     isRecurring: false,
     owner: profile.id,
   })
@@ -56,6 +60,8 @@ export default function RendaPage() {
       .from('incomes')
       .select('*')
       .eq('household_id', household.id)
+      .gte('date', monthStart)
+      .lte('date', monthEnd)
       .order('date', { ascending: false })
     setIncomes(data ?? [])
     setLoading(false)
@@ -63,8 +69,9 @@ export default function RendaPage() {
 
   useEffect(() => {
     load()
+    setForm((f) => ({ ...f, date: defaultDateForMonth(monthStart, monthEnd) }))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [monthStart, monthEnd])
 
   useEffect(() => {
     if (searchParams.get('new') === '1') {
@@ -124,7 +131,7 @@ export default function RendaPage() {
       setSaveError('Não foi possível salvar. Verifique sua conexão e tente novamente.')
       return
     }
-    setForm({ source: '', amount: '', date: todayISO(), isRecurring: false, owner: profile.id })
+    setForm({ source: '', amount: '', date: defaultDateForMonth(monthStart, monthEnd), isRecurring: false, owner: profile.id })
     setAttachment(null)
     setGrossAmount('')
     setDeductions([])
@@ -152,6 +159,8 @@ export default function RendaPage() {
           <Plus size={16} /> Receita
         </Button>
       </div>
+
+      <MonthNav label={monthLabelFull} prevParam={prevParam} nextParam={nextParam} basePath="/renda" />
 
       <Card className="animate-fade-in-up [animation-delay:80ms]">
         {loading ? (

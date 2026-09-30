@@ -40,3 +40,10 @@ export function resolveMonth(monthParam?: string) {
 function capitalize(s: string) {
   return s.charAt(0).toUpperCase() + s.slice(1)
 }
+
+/** Data padrão pra um novo lançamento na tela do mês aberto: hoje, se o mês aberto for o atual, senão o dia 1 daquele mês. */
+export function defaultDateForMonth(monthStart: string, monthEnd: string) {
+  const today = new Date().toISOString().slice(0, 10)
+  if (today >= monthStart && today <= monthEnd) return today
+  return monthStart
+}

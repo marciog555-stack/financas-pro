@@ -10,6 +10,8 @@ import { CategoryGrid } from '@/components/category-grid'
 import { AmountInput } from '@/components/amount-input'
 import { Button, Card, EmptyState, Input, Label } from '@/components/ui'
 import { BottomSheet } from '@/components/bottom-sheet'
+import { MonthNav } from '@/components/month-nav'
+import { resolveMonth, defaultDateForMonth } from '@/lib/month'
 import { fmtCurrency, fmtDate, todayISO } from '@/lib/format'
 import { cn } from '@/lib/cn'
 import type { Tables } from '@/lib/database.types'
@@ -21,6 +23,8 @@ export default function DespesasPage() {
   const supabase = createClient()
   const router = useRouter()
   const searchParams = useSearchParams()
+  const monthParam = searchParams.get('m') ?? undefined
+  const { monthStart, monthEnd, monthLabelFull, prevParam, nextParam } = resolveMonth(monthParam)
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -29,7 +33,7 @@ export default function DespesasPage() {
   const [form, setForm] = useState({
     name: '',
     amount: '',
-    dueDate: todayISO(),
+    dueDate: defaultDateForMonth(monthStart, monthEnd),
     category: categories[0]?.key ?? 'other',
     owner: '',
     isRecurring: false,
@@ -41,6 +45,8 @@ export default function DespesasPage() {
       .from('expenses')
       .select('*')
       .eq('household_id', household.id)
+      .gte('due_date', monthStart)
+      .lte('due_date', monthEnd)
       .order('due_date', { ascending: true })
     setExpenses(data ?? [])
     setLoading(false)
@@ -48,8 +54,9 @@ export default function DespesasPage() {
 
   useEffect(() => {
     load()
+    setForm((f) => ({ ...f, dueDate: defaultDateForMonth(monthStart, monthEnd) }))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [monthStart, monthEnd])
 
   useEffect(() => {
     if (searchParams.get('new') === '1') {
@@ -82,7 +89,7 @@ export default function DespesasPage() {
     setForm({
       name: '',
       amount: '',
-      dueDate: todayISO(),
+      dueDate: defaultDateForMonth(monthStart, monthEnd),
       category: categories[0]?.key ?? 'other',
       owner: '',
       isRecurring: false,
@@ -121,6 +128,8 @@ export default function DespesasPage() {
           <Plus size={16} /> Despesa
         </Button>
       </div>
+
+      <MonthNav label={monthLabelFull} prevParam={prevParam} nextParam={nextParam} basePath="/despesas" />
 
       <Card className="animate-fade-in-up [animation-delay:80ms]">
         {loading ? (
