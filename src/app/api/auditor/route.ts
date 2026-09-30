@@ -37,6 +37,53 @@ const REVIEW_TOOL: Anthropic.Tool = {
   },
 }
 
+const CREATE_TOOL: Anthropic.Tool = {
+  name: 'register_transactions',
+  description:
+    'Cria despesas e/ou rendas novas no sistema a partir de lançamentos do EXTRATO BANCÁRIO ANEXADO que não têm correspondência no que já está cadastrado. Prefira registrar a apenas perguntar: se não souber pra onde foi um gasto ou de onde veio uma renda, registre mesmo assim com needs_review=true e uma nota explicando — isso funciona como um alerta de "furo de caixa" que o responsável revisa e completa depois, sem bloquear o registro.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      expenses: {
+        type: 'array',
+        description: 'Novas despesas (saídas do extrato) a criar',
+        items: {
+          type: 'object',
+          properties: {
+            name: { type: 'string', description: 'Nome/descrição da despesa — use a descrição do extrato, ou algo mais claro se conseguir identificar (ex: "Uber", "iFood")' },
+            amount: { type: 'number' },
+            date: { type: 'string', description: 'Data no formato AAAA-MM-DD' },
+            category: { type: 'string', description: 'Chave de uma das categorias já cadastradas (ver CATEGORIAS no contexto); se não souber, use "other"' },
+            owner_profile_id: { type: 'string', description: 'ID de um dos MEMBROS DA CASA fornecidos no contexto; omita se for compartilhado ou não souber' },
+            needs_review: { type: 'boolean', description: 'true se não está claro pra onde foi esse dinheiro (furo de caixa) — nesse caso "note" é obrigatório' },
+            note: { type: 'string', description: 'Obrigatório se needs_review=true: comece com "Furo de caixa:" e explique o que falta esclarecer' },
+          },
+          required: ['name', 'amount', 'date', 'category', 'needs_review'],
+          additionalProperties: false,
+        },
+      },
+      incomes: {
+        type: 'array',
+        description: 'Novas rendas (entradas do extrato) a criar',
+        items: {
+          type: 'object',
+          properties: {
+            source: { type: 'string', description: 'Origem da renda — nome da empresa/pessoa se identificável, ou a descrição do extrato' },
+            amount: { type: 'number' },
+            date: { type: 'string', description: 'Data no formato AAAA-MM-DD' },
+            owner_profile_id: { type: 'string', description: 'ID de um dos MEMBROS DA CASA fornecidos no contexto; omita se não souber' },
+            needs_review: { type: 'boolean', description: 'true se não está claro de onde veio esse dinheiro — nesse caso "note" é obrigatório' },
+            note: { type: 'string', description: 'Obrigatório se needs_review=true: explique o que falta esclarecer sobre a origem' },
+          },
+          required: ['source', 'amount', 'date', 'needs_review'],
+          additionalProperties: false,
+        },
+      },
+    },
+    additionalProperties: false,
+  },
+}
+
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
   const {
@@ -113,7 +160,12 @@ export async function POST(request: NextRequest) {
     valor: Number(i.amount),
     responsavel: ownerName(i.owner_profile_id),
     data: i.date,
+    status_revisao: i.needs_review ? 'pendente_explicacao' : 'ok',
+    nota: i.note,
   }))
+
+  const membersData = (members ?? []).map((m) => ({ id: m.id, nome: m.name || 'Sem nome' }))
+  const categoriesData = (categories ?? []).map((c) => ({ key: c.key, label: c.label }))
 
   const benefitData = (benefitTx ?? []).map((t) => ({
     id: t.id,
@@ -134,20 +186,29 @@ Sua missão:
 2. Questionar diretamente a pessoa responsável (chame pelo primeiro nome) quando um gasto for vago, incomum, mal categorizado, duplicado ou fora do padrão pra aquela categoria. NÃO questione gastos claros e bem descritos (ex: "Aluguel R$ 1800", "Mercado R$ 320") — só o que realmente precisar de explicação.
 3. Quando você decidir que uma despesa precisa de explicação, chame a ferramenta update_expense_review com action="flag" pra essa despesa, com uma pergunta específica. Isso a esconde dos relatórios até ser resolvida.
 4. Quando o usuário responder e a explicação for satisfatória, chame a ferramenta novamente com action="resolve" e um resumo curto da explicação — isso libera a despesa de volta pros relatórios. Se a explicação não for satisfatória, continue questionando (não resolva).
-5. Nunca invente valores ou dados que não estejam no extrato abaixo. Baseie toda observação nos números reais fornecidos.
+5. Nunca invente valores que não estejam nos dados fornecidos — todo valor, data e descrição deve vir do extrato ou do que já está cadastrado.
 6. Seja objetivo: respostas curtas, diretas, sem enrolação. Uma visão geral quando pedido "analisar o mês", ou uma resposta pontual quando a pergunta for específica.${
     statementData.length > 0
       ? `
-7. O usuário anexou um EXTRATO BANCÁRIO REAL (abaixo). Faça a conciliação: compare cada lançamento do extrato com o que já está cadastrado no sistema (DESPESAS, RENDA, GASTOS DE BENEFÍCIOS). Para cada lançamento do extrato que você não conseguir casar com um lançamento já existente (por valor e data próxima), aponte isso claramente:
-   - Saídas sem lançamento correspondente: liste o quê, quando, quanto, e pergunte pro responsável o que foi e se quer que seja registrado.
-   - Entradas sem lançamento correspondente: identifique se parece salário/pagamento de empresa (descrição com nome de empresa, valor recorrente) ou renda extra/avulsa, e pergunte a origem.
-   - Não marque isso como use da ferramenta update_expense_review — isso é só pra despesas já cadastradas. Pra itens do extrato, apenas relate em texto e pergunte.`
+7. O usuário anexou um EXTRATO BANCÁRIO REAL (abaixo). Faça a conciliação: compare cada lançamento do extrato com o que já está cadastrado (DESPESAS, RENDA, GASTOS DE BENEFÍCIOS) por valor e data próxima. Para todo lançamento do extrato sem correspondência, REGISTRE no sistema usando a ferramenta register_transactions — não fique só perguntando em texto, o usuário prefere ver o lançamento já criado e revisar depois:
+   - Saída sem correspondência: crie uma despesa (register_transactions.expenses). Se der pra identificar o que foi (nome de loja/serviço reconhecível na descrição), registre normal, sem needs_review. Se não estiver claro pra onde foi esse dinheiro, registre mesmo assim com needs_review=true e note começando com "Furo de caixa:" explicando o que falta esclarecer — isso vira um alerta pro responsável.
+   - Entrada sem correspondência: crie uma renda (register_transactions.incomes). Se a descrição indicar claramente a origem (nome de empresa, "salário", etc.), registre normal. Se não estiver clara a origem, registre com needs_review=true e note explicando a dúvida (ex: "PIX recebido de CPF/nome desconhecido, origem não identificada").
+   - owner_profile_id: use o id de um dos MEMBROS DA CASA se a descrição indicar claramente de quem é (ex: nome da pessoa no PIX, cartão de uma pessoa específica); senão omita (fica compartilhado).
+   - category: escolha a categoria mais adequada dentre CATEGORIAS; se não souber, use "other".
+   - Depois de registrar, resuma em texto o que foi criado (quantas despesas, quantas rendas, quantas ficaram como furo de caixa/pendentes) — não repita cada lançamento em detalhe, só o resumo.
+   - Não use update_expense_review para itens do extrato — essa ferramenta é só para despesas que já existiam antes.`
       : ''
   }
 
 Resumo do mês (já cadastrado no sistema):
 - Total de renda: ${fmtCurrency(totalIncome)}
 - Total de despesas: ${fmtCurrency(totalExpense)}
+
+MEMBROS DA CASA:
+${JSON.stringify(membersData, null, 0)}
+
+CATEGORIAS (despesas):
+${JSON.stringify(categoriesData, null, 0)}
 
 RENDA (${incomesData.length} lançamentos):
 ${JSON.stringify(incomesData, null, 0)}
@@ -176,7 +237,7 @@ Datas de referência: hoje é ${fmtDate(new Date().toISOString().slice(0, 10))}.
       thinking: { type: 'adaptive' },
       output_config: { effort: 'medium' },
       system: systemPrompt,
-      tools: [REVIEW_TOOL],
+      tools: [REVIEW_TOOL, CREATE_TOOL],
       messages: history,
     })
     message = await stream.finalMessage()
@@ -185,28 +246,84 @@ Datas de referência: hoje é ${fmtDate(new Date().toISOString().slice(0, 10))}.
     return NextResponse.json({ error: 'Não foi possível falar com o auditor agora.' }, { status: 502 })
   }
 
-  const toolUse = message.content.find((b): b is Anthropic.ToolUseBlock => b.type === 'tool_use')
+  const toolUses = message.content.filter((b): b is Anthropic.ToolUseBlock => b.type === 'tool_use')
   let flaggedCount = 0
+  let createdExpenseCount = 0
+  let createdIncomeCount = 0
+  let furoCaixaCount = 0
 
-  if (toolUse) {
-    const input = toolUse.input as { updates?: { expense_id: string; action: 'flag' | 'resolve'; note: string }[] }
-    for (const update of input.updates ?? []) {
-      const needsReview = update.action === 'flag'
-      const { error } = await supabase
-        .from('expenses')
-        .update({ needs_review: needsReview, note: update.note })
-        .eq('id', update.expense_id)
-        .eq('household_id', householdId)
-      if (!error && needsReview) flaggedCount++
+  const validOwnerIds = new Set((members ?? []).map((m) => m.id))
+  const validCategoryKeys = new Set((categories ?? []).map((c) => c.key))
+  const toolResults: Anthropic.ToolResultBlockParam[] = []
+
+  for (const toolUse of toolUses) {
+    if (toolUse.name === 'update_expense_review') {
+      const input = toolUse.input as { updates?: { expense_id: string; action: 'flag' | 'resolve'; note: string }[] }
+      for (const update of input.updates ?? []) {
+        const needsReview = update.action === 'flag'
+        const { error } = await supabase
+          .from('expenses')
+          .update({ needs_review: needsReview, note: update.note })
+          .eq('id', update.expense_id)
+          .eq('household_id', householdId)
+        if (!error && needsReview) flaggedCount++
+      }
+      toolResults.push({ type: 'tool_result', tool_use_id: toolUse.id, content: 'Atualizado com sucesso.' })
+    } else if (toolUse.name === 'register_transactions') {
+      const input = toolUse.input as {
+        expenses?: { name: string; amount: number; date: string; category?: string; owner_profile_id?: string; needs_review?: boolean; note?: string }[]
+        incomes?: { source: string; amount: number; date: string; owner_profile_id?: string; needs_review?: boolean; note?: string }[]
+      }
+
+      const newExpenses = (input.expenses ?? []).map((e) => ({
+        household_id: householdId,
+        name: e.name,
+        amount: e.amount,
+        category: e.category && validCategoryKeys.has(e.category) ? e.category : 'other',
+        due_date: e.date,
+        owner_profile_id: e.owner_profile_id && validOwnerIds.has(e.owner_profile_id) ? e.owner_profile_id : null,
+        is_paid: true,
+        is_recurring: false,
+        needs_review: Boolean(e.needs_review),
+        note: e.needs_review ? e.note ?? null : null,
+      }))
+      const newIncomes = (input.incomes ?? []).map((i) => ({
+        household_id: householdId,
+        source: i.source,
+        amount: i.amount,
+        date: i.date,
+        owner_profile_id: i.owner_profile_id && validOwnerIds.has(i.owner_profile_id) ? i.owner_profile_id : null,
+        is_recurring: false,
+        needs_review: Boolean(i.needs_review),
+        note: i.needs_review ? i.note ?? null : null,
+      }))
+
+      if (newExpenses.length > 0) {
+        const { error } = await supabase.from('expenses').insert(newExpenses)
+        if (!error) {
+          createdExpenseCount += newExpenses.length
+          furoCaixaCount += newExpenses.filter((e) => e.needs_review).length
+        }
+      }
+      if (newIncomes.length > 0) {
+        const { error } = await supabase.from('incomes').insert(newIncomes)
+        if (!error) {
+          createdIncomeCount += newIncomes.length
+          furoCaixaCount += newIncomes.filter((i) => i.needs_review).length
+        }
+      }
+
+      toolResults.push({
+        type: 'tool_result',
+        tool_use_id: toolUse.id,
+        content: `Registrado: ${newExpenses.length} despesa(s), ${newIncomes.length} renda(s).`,
+      })
     }
   }
 
   const newHistory: Anthropic.MessageParam[] = [...history, { role: 'assistant', content: message.content }]
-  if (toolUse) {
-    newHistory.push({
-      role: 'user',
-      content: [{ type: 'tool_result', tool_use_id: toolUse.id, content: 'Atualizado com sucesso.' }],
-    })
+  if (toolResults.length > 0) {
+    newHistory.push({ role: 'user', content: toolResults })
   }
 
   const replyText = message.content
@@ -214,5 +331,12 @@ Datas de referência: hoje é ${fmtDate(new Date().toISOString().slice(0, 10))}.
     .map((b) => b.text)
     .join('\n\n')
 
-  return NextResponse.json({ history: newHistory, reply: replyText, flaggedCount })
+  return NextResponse.json({
+    history: newHistory,
+    reply: replyText,
+    flaggedCount,
+    createdExpenseCount,
+    createdIncomeCount,
+    furoCaixaCount,
+  })
 }

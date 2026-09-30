@@ -31,15 +31,17 @@ export default async function RelatoriosPage() {
 
   const householdId = profile.household_id
 
-  const [{ data: incomes }, { data: allExpenses }, { data: expenseCategories }] = await Promise.all([
+  const [{ data: allIncomes }, { data: allExpenses }, { data: expenseCategories }] = await Promise.all([
     supabase.from('incomes').select('*').eq('household_id', householdId).gte('date', rangeStart),
     supabase.from('expenses').select('*').eq('household_id', householdId).gte('due_date', rangeStart),
     supabase.from('expense_categories').select('*').eq('household_id', householdId),
   ])
 
   const categories = expenseCategories ?? []
-  const pendingCount = (allExpenses ?? []).filter((e) => e.needs_review).length
+  const pendingCount =
+    (allExpenses ?? []).filter((e) => e.needs_review).length + (allIncomes ?? []).filter((i) => i.needs_review).length
   const expenses = (allExpenses ?? []).filter((e) => !e.needs_review)
+  const incomes = (allIncomes ?? []).filter((i) => !i.needs_review)
 
   const months: { key: string; month: string; renda: number; despesas: number }[] = []
   for (let i = 5; i >= 0; i--) {
@@ -55,7 +57,7 @@ export default async function RelatoriosPage() {
     })
   }
 
-  for (const income of incomes ?? []) {
+  for (const income of incomes) {
     const key = income.date.slice(0, 7)
     const bucket = months.find((m) => m.key === key)
     if (bucket) bucket.renda += Number(income.amount)
@@ -108,10 +110,10 @@ export default async function RelatoriosPage() {
             <ShieldAlert size={20} className="shrink-0 text-accent-orange" />
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium text-foreground">
-                {pendingCount} {pendingCount === 1 ? 'despesa aguardando' : 'despesas aguardando'} explicação
+                {pendingCount} {pendingCount === 1 ? 'lançamento aguardando' : 'lançamentos aguardando'} explicação
               </p>
               <p className="text-xs text-foreground/45">
-                O Auditor IA marcou {pendingCount === 1 ? 'esse gasto' : 'esses gastos'} como suspeito. Toque para responder e liberá-{pendingCount === 1 ? 'lo' : 'los'} nos relatórios.
+                O Auditor IA marcou {pendingCount === 1 ? 'esse lançamento' : 'esses lançamentos'} como pendente (furo de caixa). Toque para explicar e liberá-{pendingCount === 1 ? 'lo' : 'los'} nos relatórios.
               </p>
             </div>
           </Card>
