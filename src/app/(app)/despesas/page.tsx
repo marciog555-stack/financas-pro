@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Plus, Trash2, RefreshCw, CheckCircle2, Circle, CreditCard } from 'lucide-react'
+import { Plus, Trash2, RefreshCw, CheckCircle2, Circle, CreditCard, Repeat } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useHousehold, ownerLabel } from '@/lib/household-context'
 import { OwnerChips } from '@/components/owner-chips'
@@ -32,6 +32,7 @@ export default function DespesasPage() {
     dueDate: todayISO(),
     category: categories[0]?.key ?? 'other',
     owner: '',
+    isRecurring: false,
   })
 
   async function load() {
@@ -71,13 +72,21 @@ export default function DespesasPage() {
       category: form.category,
       owner_profile_id: form.owner || null,
       is_paid: false,
+      is_recurring: form.isRecurring,
     })
     setSaving(false)
     if (error) {
       setSaveError('Não foi possível salvar. Verifique sua conexão e tente novamente.')
       return
     }
-    setForm({ name: '', amount: '', dueDate: todayISO(), category: 'other', owner: '' })
+    setForm({
+      name: '',
+      amount: '',
+      dueDate: todayISO(),
+      category: categories[0]?.key ?? 'other',
+      owner: '',
+      isRecurring: false,
+    })
     setSheetOpen(false)
     load()
   }
@@ -138,10 +147,16 @@ export default function DespesasPage() {
                     {cat?.emoji ?? '📦'}
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">{expense.name}</p>
+                    <p className="flex items-center gap-1 truncate text-sm font-medium">
+                      {expense.name}
+                      {expense.is_recurring && (
+                        <Repeat size={11} className="shrink-0 text-foreground/30" aria-label="Despesa fixa" />
+                      )}
+                    </p>
                     <p className="truncate text-xs text-foreground/40">
                       {overdue ? 'Venceu' : 'Vence'} {fmtDate(expense.due_date)} ·{' '}
                       {ownerLabel(members, expense.owner_profile_id)}
+                      {expense.is_recurring ? ' · fixa' : ''}
                     </p>
                   </div>
                   <span className={cn('shrink-0 font-mono text-sm font-semibold', overdue && 'text-accent-red')}>
@@ -197,6 +212,15 @@ export default function DespesasPage() {
               required
             />
           </div>
+
+          <label className="flex items-center gap-2 text-sm text-foreground/70">
+            <input
+              type="checkbox"
+              checked={form.isRecurring}
+              onChange={(e) => setForm({ ...form, isRecurring: e.target.checked })}
+            />
+            Despesa fixa (repete todo mês com o mesmo valor)
+          </label>
 
           {saveError && <p className="text-xs text-accent-red">{saveError}</p>}
           <Button type="submit" disabled={saving} className="mt-2">

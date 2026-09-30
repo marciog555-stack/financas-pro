@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { Card, EmptyState } from '@/components/ui'
 import { MonthNav } from '@/components/month-nav'
 import { resolveMonth } from '@/lib/month'
+import { ensureRecurringExpenses } from '@/lib/recurring-expenses'
 import { fmtCurrency, fmtDate } from '@/lib/format'
 import { ownerLabel } from '@/lib/owner-label'
 import { TrendingUp } from 'lucide-react'
@@ -39,6 +40,8 @@ export default async function MovimentosPage({
 
   const { monthStart, monthEnd, monthLabelFull, prevParam, nextParam } = resolveMonth(searchParams?.m)
   const householdId = profile.household_id
+
+  await ensureRecurringExpenses(supabase, householdId, monthStart)
 
   const [{ data: expenses }, { data: incomes }, { data: members }, { data: expenseCategories }] = await Promise.all([
     supabase

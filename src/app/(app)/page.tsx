@@ -9,6 +9,7 @@ import { SettleGauge } from '@/components/settle-gauge'
 import { SpendingLimitCard } from '@/components/spending-limit-card'
 import { MonthNav } from '@/components/month-nav'
 import { resolveMonth } from '@/lib/month'
+import { ensureRecurringExpenses } from '@/lib/recurring-expenses'
 import { fmtCurrency, fmtDate, todayISO } from '@/lib/format'
 import { ownerLabel } from '@/lib/owner-label'
 import { TrendingUp, TrendingDown, Wallet, Landmark, Target, CalendarClock, Users, UserPlus } from 'lucide-react'
@@ -38,6 +39,8 @@ export default async function DashboardPage({
     resolveMonth(searchParams?.m)
 
   const householdId = profile.household_id
+
+  await ensureRecurringExpenses(supabase, householdId, monthStart)
 
   const [
     { data: incomes },
