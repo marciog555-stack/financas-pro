@@ -5,6 +5,7 @@ import { resolveMonth } from '@/lib/month'
 import { fmtCurrency, fmtDate } from '@/lib/format'
 
 export const runtime = 'nodejs'
+export const maxDuration = 60
 
 const REVIEW_TOOL: Anthropic.Tool = {
   name: 'update_expense_review',
@@ -169,7 +170,7 @@ Datas de referência: hoje é ${fmtDate(new Date().toISOString().slice(0, 10))}.
   let message: Anthropic.Message
   try {
     const anthropic = new Anthropic()
-    message = await anthropic.messages.create({
+    const stream = anthropic.messages.stream({
       model: 'claude-opus-5-5',
       max_tokens: 4096,
       thinking: { type: 'adaptive' },
@@ -178,6 +179,7 @@ Datas de referência: hoje é ${fmtDate(new Date().toISOString().slice(0, 10))}.
       tools: [REVIEW_TOOL],
       messages: history,
     })
+    message = await stream.finalMessage()
   } catch (err) {
     console.error('Auditor IA error', err)
     return NextResponse.json({ error: 'Não foi possível falar com o auditor agora.' }, { status: 502 })
