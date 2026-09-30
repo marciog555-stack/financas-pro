@@ -138,6 +138,13 @@ export function BenefitCard({
 
           {adding && (
             <form onSubmit={handleAddTransaction} className="mb-3 flex flex-col gap-2 rounded-lg bg-surface-2/50 p-2.5">
+              <button
+                type="button"
+                onClick={() => setForm((f) => ({ ...f, description: f.description || 'Mercado', category: 'market' }))}
+                className="w-fit rounded-full border border-border px-2.5 py-1 text-xs font-medium text-foreground/60 transition-colors hover:border-accent-orange/60 hover:text-accent-orange"
+              >
+                🛒 Foi mercado
+              </button>
               <Input
                 placeholder="Onde foi gasto (mercado, conta de luz…)"
                 value={form.description}
