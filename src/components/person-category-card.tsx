@@ -1,11 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { AlertTriangle } from 'lucide-react'
+import { AlertTriangle, Check, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { Card, Select } from '@/components/ui'
+import { useHousehold } from '@/lib/household-context'
+import { Card, Select, Input, Button } from '@/components/ui'
 import { BottomSheet } from '@/components/bottom-sheet'
 import { Avatar } from '@/components/avatar'
 import { CategoryPieChart } from '@/components/reports-charts'
@@ -15,6 +16,18 @@ import { PIE_COLORS } from '@/lib/chart-colors'
 type CategoryOption = { key: string; label: string; emoji: string }
 type ExpenseItem = { id: string; name: string; amount: number; due_date: string | null; category: string }
 type CategoryDatum = { key: string; name: string; emoji: string; value: number }
+
+const NEW_CATEGORY_VALUE = '__new__'
+
+function slugify(label: string) {
+  return label
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+}
 
 export function PersonCategoryCard({
   person,
@@ -33,11 +46,22 @@ export function PersonCategoryCard({
 }) {
   const supabase = createClient()
   const router = useRouter()
+  const { household } = useHousehold()
   const [openCategory, setOpenCategory] = useState<string | null>(null)
   const [items, setItems] = useState(person.expenses)
+  const [localCategories, setLocalCategories] = useState(categories)
   const [savingId, setSavingId] = useState<string | null>(null)
+  const [creatingForId, setCreatingForId] = useState<string | null>(null)
+  const [newEmoji, setNewEmoji] = useState('📦')
+  const [newLabel, setNewLabel] = useState('')
+  const [creating, setCreating] = useState(false)
+  const [createError, setCreateError] = useState<string | null>(null)
 
-  const openLabel = categories.find((c) => c.key === openCategory)
+  useEffect(() => {
+    setLocalCategories(categories)
+  }, [categories])
+
+  const openLabel = localCategories.find((c) => c.key === openCategory)
   const itemsInOpenCategory = items.filter((e) => e.category === openCategory)
 
   async function handleRecategorize(expenseId: string, newCategory: string) {
@@ -46,6 +70,43 @@ export function PersonCategoryCard({
     await supabase.from('expenses').update({ category: newCategory }).eq('id', expenseId)
     setSavingId(null)
     router.refresh()
+  }
+
+  function handleSelectChange(expenseId: string, value: string) {
+    if (value === NEW_CATEGORY_VALUE) {
+      setCreatingForId(expenseId)
+      setNewEmoji('📦')
+      setNewLabel('')
+      setCreateError(null)
+      return
+    }
+    handleRecategorize(expenseId, value)
+  }
+
+  async function handleCreateCategory(expenseId: string) {
+    const key = slugify(newLabel)
+    if (!key) return
+    setCreating(true)
+    setCreateError(null)
+    const { data, error } = await supabase
+      .from('expense_categories')
+      .insert({
+        household_id: household.id,
+        key,
+        label: newLabel.trim(),
+        emoji: newEmoji.trim() || '📦',
+        sort_order: localCategories.length,
+      })
+      .select()
+      .single()
+    setCreating(false)
+    if (error || !data) {
+      setCreateError(error?.code === '23505' ? 'Já existe uma categoria com esse nome.' : 'Não foi possível criar a categoria.')
+      return
+    }
+    setLocalCategories((prev) => [...prev, { key: data.key, label: data.label, emoji: data.emoji }])
+    setCreatingForId(null)
+    await handleRecategorize(expenseId, key)
   }
 
   return (
@@ -90,7 +151,10 @@ export function PersonCategoryCard({
 
       <BottomSheet
         open={openCategory !== null}
-        onClose={() => setOpenCategory(null)}
+        onClose={() => {
+          setOpenCategory(null)
+          setCreatingForId(null)
+        }}
         title={openLabel ? `${openLabel.emoji} ${openLabel.label} — ${person.name.split(' ')[0]}` : undefined}
       >
         <div className="flex flex-col divide-y divide-border pb-2">
@@ -106,18 +170,57 @@ export function PersonCategoryCard({
                 </div>
                 <span className="shrink-0 font-mono text-sm font-medium">{fmtCurrency(e.amount)}</span>
               </div>
-              <Select
-                value={e.category}
-                disabled={savingId === e.id}
-                onChange={(ev) => handleRecategorize(e.id, ev.target.value)}
-                className="text-xs"
-              >
-                {categories.map((c) => (
-                  <option key={c.key} value={c.key}>
-                    {c.emoji} {c.label}
-                  </option>
-                ))}
-              </Select>
+              {creatingForId === e.id ? (
+                <div className="flex items-center gap-2 rounded-2xl border border-border bg-surface-2/40 p-2">
+                  <Input
+                    value={newEmoji}
+                    onChange={(ev) => setNewEmoji(ev.target.value)}
+                    className="w-12 px-2 text-center"
+                    maxLength={4}
+                  />
+                  <Input
+                    value={newLabel}
+                    onChange={(ev) => setNewLabel(ev.target.value)}
+                    onKeyDown={(ev) => {
+                      if (ev.key === 'Enter') {
+                        ev.preventDefault()
+                        handleCreateCategory(e.id)
+                      }
+                    }}
+                    placeholder="Nome da categoria"
+                    className="flex-1"
+                    autoFocus
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => handleCreateCategory(e.id)}
+                    disabled={creating || !newLabel.trim()}
+                  >
+                    <Check size={14} />
+                  </Button>
+                  <Button type="button" size="sm" variant="secondary" onClick={() => setCreatingForId(null)} disabled={creating}>
+                    <X size={14} />
+                  </Button>
+                </div>
+              ) : (
+                <Select
+                  value={e.category}
+                  disabled={savingId === e.id}
+                  onChange={(ev) => handleSelectChange(e.id, ev.target.value)}
+                  className="text-xs"
+                >
+                  {localCategories.map((c) => (
+                    <option key={c.key} value={c.key}>
+                      {c.emoji} {c.label}
+                    </option>
+                  ))}
+                  <option value={NEW_CATEGORY_VALUE}>➕ Nova categoria</option>
+                </Select>
+              )}
+              {creatingForId === e.id && createError && (
+                <p className="text-xs text-accent-red">{createError}</p>
+              )}
             </div>
           ))}
         </div>
