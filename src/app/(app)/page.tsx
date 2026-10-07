@@ -95,6 +95,19 @@ export default async function DashboardPage({
     }))
     .sort((a, b) => b.amount - a.amount)
 
+  function topCategoryFor(ownerId: string) {
+    const byCategory = new Map<string, number>()
+    for (const e of reviewedExpenses) {
+      if (e.owner_profile_id !== ownerId) continue
+      byCategory.set(e.category, (byCategory.get(e.category) ?? 0) + Number(e.amount))
+    }
+    const top = Array.from(byCategory.entries()).sort((a, b) => b[1] - a[1])[0]
+    if (!top) return null
+    const [key, value] = top
+    const cat = categories.find((c) => c.key === key)
+    return { emoji: cat?.emoji ?? '💳', name: cat?.label ?? key, value }
+  }
+
   const positive = balance >= 0
 
   // Acerto de contas entre você e o parceiro (divisão da casa)
@@ -172,6 +185,7 @@ export default async function DashboardPage({
             pct={totalExpense > 0 ? Math.round((youExpense / totalExpense) * 100) : 0}
             spent={youExpense}
             income={amountBy(incomes, you.id)}
+            topCategory={topCategoryFor(you.id)}
           />
           {partner ? (
             <PersonSplitColumn
@@ -180,6 +194,7 @@ export default async function DashboardPage({
               pct={totalExpense > 0 ? Math.round((partnerExpense / totalExpense) * 100) : 0}
               spent={partnerExpense}
               income={amountBy(incomes, partner.id)}
+              topCategory={topCategoryFor(partner.id)}
               alignRight
             />
           ) : (
@@ -194,6 +209,12 @@ export default async function DashboardPage({
             </Link>
           )}
         </div>
+        <Link
+          href="/relatorios"
+          className="mt-3 block border-t border-border pt-3 text-center text-xs font-medium text-accent-blue hover:underline"
+        >
+          Ver gasto por categoria de cada um →
+        </Link>
       </Card>
 
       <SpendingLimitCard
@@ -356,6 +377,7 @@ function PersonSplitColumn({
   pct,
   spent,
   income,
+  topCategory,
   alignRight,
 }: {
   name: string
@@ -363,6 +385,7 @@ function PersonSplitColumn({
   pct: number
   spent: number
   income: number
+  topCategory: { emoji: string; name: string; value: number } | null
   alignRight?: boolean
 }) {
   return (
@@ -380,6 +403,11 @@ function PersonSplitColumn({
           Rendas <span className="font-mono text-accent-emerald">{fmtCurrency(income)}</span>
         </p>
       </div>
+      {topCategory && (
+        <p className="text-[11px] text-foreground/35">
+          Maior gasto: {topCategory.emoji} {topCategory.name} ({fmtCurrency(topCategory.value)})
+        </p>
+      )}
     </div>
   )
 }

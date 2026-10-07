@@ -4,6 +4,8 @@ import { createClient } from '@/lib/supabase/server'
 import { Card } from '@/components/ui'
 import { MonthlyBarChart, CategoryPieChart } from '@/components/reports-charts'
 import { Sparkline } from '@/components/sparkline'
+import { Avatar } from '@/components/avatar'
+import { getAvatarUrl } from '@/lib/avatars'
 import { fmtCurrency } from '@/lib/format'
 import { PIE_COLORS } from '@/lib/chart-colors'
 import { BarChart2, ShieldAlert } from 'lucide-react'
@@ -31,11 +33,13 @@ export default async function RelatoriosPage() {
 
   const householdId = profile.household_id
 
-  const [{ data: allIncomes }, { data: allExpenses }, { data: expenseCategories }] = await Promise.all([
-    supabase.from('incomes').select('*').eq('household_id', householdId).gte('date', rangeStart),
-    supabase.from('expenses').select('*').eq('household_id', householdId).gte('due_date', rangeStart),
-    supabase.from('expense_categories').select('*').eq('household_id', householdId),
-  ])
+  const [{ data: allIncomes }, { data: allExpenses }, { data: expenseCategories }, { data: members }] =
+    await Promise.all([
+      supabase.from('incomes').select('*').eq('household_id', householdId).gte('date', rangeStart),
+      supabase.from('expenses').select('*').eq('household_id', householdId).gte('due_date', rangeStart),
+      supabase.from('expense_categories').select('*').eq('household_id', householdId),
+      supabase.from('profiles').select('*').eq('household_id', householdId).order('created_at'),
+    ])
 
   const categories = expenseCategories ?? []
   const pendingCount =
@@ -94,6 +98,33 @@ export default async function RelatoriosPage() {
   const totalIncome6m = months.reduce((s, m) => s + m.renda, 0)
   const totalExpense6m = months.reduce((s, m) => s + m.despesas, 0)
   const avgSavings = (totalIncome6m - totalExpense6m) / 6
+
+  function categoryDataFor(ownerId: string) {
+    const byOwnerCategory = new Map<string, number>()
+    for (const expense of expenses) {
+      if (expense.owner_profile_id !== ownerId) continue
+      byOwnerCategory.set(expense.category, (byOwnerCategory.get(expense.category) ?? 0) + Number(expense.amount))
+    }
+    return Array.from(byOwnerCategory.entries())
+      .map(([key, value]) => ({
+        key,
+        name: categories.find((c) => c.key === key)?.label ?? key,
+        emoji: categories.find((c) => c.key === key)?.emoji ?? '💳',
+        value,
+      }))
+      .sort((a, b) => b.value - a.value)
+  }
+
+  const peopleCategoryData = (members ?? []).map((m) => {
+    const data = categoryDataFor(m.id)
+    return {
+      id: m.id,
+      name: m.name || 'Sem nome',
+      avatarUrl: getAvatarUrl(m.avatar_path),
+      data,
+      total: data.reduce((s, c) => s + c.value, 0),
+    }
+  })
 
   return (
     <div className="flex flex-col gap-5">
@@ -169,6 +200,38 @@ export default async function RelatoriosPage() {
           </div>
         )}
       </Card>
+
+      {peopleCategoryData.length > 0 && (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 animate-fade-in-up [animation-delay:200ms]">
+          {peopleCategoryData.map((person) => (
+            <Card key={person.id}>
+              <div className="mb-3 flex items-center gap-2">
+                <Avatar name={person.name} src={person.avatarUrl} size={24} />
+                <h2 className="text-sm font-semibold">Gastos de {person.name.split(' ')[0]}</h2>
+              </div>
+              <CategoryPieChart data={person.data} total={person.total} />
+              {person.data.length > 0 && (
+                <div className="mt-4 flex flex-col divide-y divide-border">
+                  {person.data.map((c, i) => (
+                    <div key={c.key} className="flex items-center gap-3 py-2">
+                      <span
+                        className="h-2.5 w-2.5 shrink-0 rounded-full"
+                        style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }}
+                      />
+                      <span className="min-w-0 flex-1 truncate text-sm text-foreground/70">
+                        {c.emoji} {c.name}
+                      </span>
+                      <span className="shrink-0 text-right font-mono text-sm font-medium">
+                        {fmtCurrency(c.value)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
