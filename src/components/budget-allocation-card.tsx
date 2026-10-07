@@ -13,34 +13,30 @@ type BudgetItem = {
   key: string
   label: string
   emoji: string
-  limit: number | null
+  pct: number | null
   spent: number
 }
 
-export function BudgetAllocationCard({ items }: { items: BudgetItem[] }) {
+export function BudgetAllocationCard({ items, monthlyIncome }: { items: BudgetItem[]; monthlyIncome: number }) {
   const supabase = createClient()
   const router = useRouter()
   const [editingId, setEditingId] = useState<string | null>(null)
   const [value, setValue] = useState('')
   const [saving, setSaving] = useState(false)
 
-  const withLimit = items.filter((i) => i.limit != null && i.limit > 0)
-  const totalLimit = withLimit.reduce((s, i) => s + (i.limit ?? 0), 0)
-  const totalSpent = withLimit.reduce((s, i) => s + i.spent, 0)
-  const overallPct = totalLimit > 0 ? Math.round((totalSpent / totalLimit) * 100) : null
-
-  const visible = items.filter((i) => i.limit != null || i.spent > 0)
+  const allocatedPct = items.reduce((s, i) => s + (i.pct ?? 0), 0)
+  const visible = items.filter((i) => i.pct != null || i.spent > 0)
 
   function startEdit(item: BudgetItem) {
     setEditingId(item.id)
-    setValue(item.limit != null ? String(item.limit) : '')
+    setValue(item.pct != null ? String(item.pct) : '')
   }
 
   async function handleSave(item: BudgetItem) {
     const parsed = value.trim() === '' ? null : Number(value.replace(',', '.'))
-    if (parsed != null && (Number.isNaN(parsed) || parsed < 0)) return
+    if (parsed != null && (Number.isNaN(parsed) || parsed < 0 || parsed > 100)) return
     setSaving(true)
-    await supabase.from('expense_categories').update({ monthly_limit: parsed }).eq('id', item.id)
+    await supabase.from('expense_categories').update({ budget_pct: parsed }).eq('id', item.id)
     setSaving(false)
     setEditingId(null)
     router.refresh()
@@ -51,7 +47,7 @@ export function BudgetAllocationCard({ items }: { items: BudgetItem[] }) {
       <Card>
         <h2 className="text-sm font-semibold">Uso do Orçamento</h2>
         <p className="mt-2 text-xs text-foreground/40">
-          Defina um limite mensal pra cada categoria pra acompanhar o quanto já foi gasto. Toque numa categoria com
+          Divida os 100% da renda em etapas por categoria (ex: Moradia 30%, Mercado 15%). Toque numa categoria com
           gasto no mês pra começar.
         </p>
       </Card>
@@ -62,25 +58,28 @@ export function BudgetAllocationCard({ items }: { items: BudgetItem[] }) {
     <Card>
       <div className="mb-3.5 flex items-center justify-between">
         <h2 className="text-sm font-semibold">Uso do Orçamento</h2>
-        {overallPct != null && <span className="text-xs font-medium text-accent-emerald">{overallPct}% Total</span>}
+        <span className={`text-xs font-medium ${allocatedPct > 100 ? 'text-accent-red' : 'text-accent-emerald'}`}>
+          {Math.round(allocatedPct)}% da renda alocada
+        </span>
       </div>
       <div className="flex flex-col gap-3">
         {visible.map((item) => {
-          const pct = item.limit && item.limit > 0 ? Math.min(100, Math.round((item.spent / item.limit) * 100)) : 0
-          const over = item.limit != null && item.spent > item.limit
+          const effectiveLimit = item.pct != null && monthlyIncome > 0 ? (item.pct / 100) * monthlyIncome : null
+          const pctUsed = effectiveLimit && effectiveLimit > 0 ? Math.min(100, Math.round((item.spent / effectiveLimit) * 100)) : 0
+          const over = effectiveLimit != null && item.spent > effectiveLimit
           return (
             <div key={item.id}>
               <div className="mb-1 flex items-center justify-between text-xs">
                 <span className="text-foreground/70">
                   {item.emoji} {item.label}
                 </span>
-                {editingId === item.id ? null : item.limit != null ? (
+                {editingId === item.id ? null : item.pct != null ? (
                   <button
                     type="button"
                     onClick={() => startEdit(item)}
                     className={`flex items-center gap-1 font-semibold ${over ? 'text-accent-red' : 'text-foreground'}`}
                   >
-                    {pct}% <Pencil size={10} className="text-foreground/30" />
+                    {pctUsed}% <Pencil size={10} className="text-foreground/30" />
                   </button>
                 ) : (
                   <button
@@ -88,7 +87,7 @@ export function BudgetAllocationCard({ items }: { items: BudgetItem[] }) {
                     onClick={() => startEdit(item)}
                     className="flex items-center gap-1 text-foreground/40 hover:text-foreground/70"
                   >
-                    definir limite <Pencil size={10} />
+                    definir % da renda <Pencil size={10} />
                   </button>
                 )}
               </div>
@@ -96,12 +95,13 @@ export function BudgetAllocationCard({ items }: { items: BudgetItem[] }) {
                 <div className="flex items-center gap-2">
                   <Input
                     inputMode="decimal"
-                    placeholder="Ex: 600"
+                    placeholder="Ex: 15"
                     value={value}
                     onChange={(e) => setValue(e.target.value)}
                     className="flex-1 py-1.5 text-xs"
                     autoFocus
                   />
+                  <span className="shrink-0 text-xs text-foreground/40">% da renda</span>
                   <Button type="button" size="sm" onClick={() => handleSave(item)} disabled={saving}>
                     {saving ? '...' : 'Salvar'}
                   </Button>
@@ -112,13 +112,13 @@ export function BudgetAllocationCard({ items }: { items: BudgetItem[] }) {
               ) : (
                 <>
                   <ProgressBar
-                    value={item.limit != null ? pct : 0}
+                    value={pctUsed}
                     className="h-2"
                     barClassName={over ? 'bg-accent-red' : 'bg-gradient-to-r from-accent-emerald to-accent-blue'}
                   />
-                  {item.limit != null && (
+                  {effectiveLimit != null && (
                     <p className="mt-1 text-right text-[10px] text-foreground/40">
-                      {fmtCurrency(item.spent)} de {fmtCurrency(item.limit)}
+                      {fmtCurrency(item.spent)} de {fmtCurrency(effectiveLimit)} ({item.pct}% da renda)
                     </p>
                   )}
                 </>

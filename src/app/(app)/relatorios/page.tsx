@@ -144,15 +144,15 @@ export default async function RelatoriosPage({
         key: c.key,
         label: c.label,
         emoji: c.emoji,
-        limit: c.monthly_limit,
+        pct: c.budget_pct,
         spent: spentByCategory.get(c.key) ?? 0,
       }))
       .sort((a, b) => {
-        const aHas = a.limit != null
-        const bHas = b.limit != null
+        const aHas = a.pct != null
+        const bHas = b.pct != null
         if (aHas && !bHas) return -1
         if (!aHas && bHas) return 1
-        if (aHas && bHas) return b.spent / (b.limit || 1) - a.spent / (a.limit || 1)
+        if (aHas && bHas) return b.spent / (b.pct || 1) - a.spent / (a.pct || 1)
         return b.spent - a.spent
       })
   }
@@ -354,7 +354,7 @@ export default async function RelatoriosPage({
           </Card>
 
           <div className="animate-fade-in-up [animation-delay:160ms]">
-            <BudgetAllocationCard items={sharedBudgetItems} />
+            <BudgetAllocationCard items={sharedBudgetItems} monthlyIncome={curMonth.renda} />
           </div>
         </>
       ) : personalView && selectedMember ? (
@@ -417,7 +417,7 @@ export default async function RelatoriosPage({
             categories={categories}
           />
 
-          <BudgetAllocationCard items={personalView.budgetItems} />
+          <BudgetAllocationCard items={personalView.budgetItems} monthlyIncome={curMonth.renda} />
         </>
       ) : (
         <Card className="flex flex-col items-center gap-2 py-10 text-center">
