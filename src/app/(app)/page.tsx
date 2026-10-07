@@ -107,13 +107,12 @@ export default async function DashboardPage({
 
   const youExpense = amountBy(reviewedExpenses, you.id)
   const partnerExpense = partner ? amountBy(reviewedExpenses, partner.id) : 0
-  // Gastos "Compartilhados" (sem dono) já saem de um caixa comum — não geram dívida entre os dois,
-  // a menos que alguém tenha registrado quem realmente pagou (paid_by) ao marcar como paga.
-  const individualExpense = youExpense + partnerExpense
   const youSplitPct = you.split_percentage ?? 50
   const partnerSplitPct = partner ? partner.split_percentage ?? 50 : 100 - youSplitPct
-  const youFairShare = individualExpense * (youSplitPct / 100)
 
+  // Gasto "individual" (com dono) é só do próprio dono — não gera dívida entre os dois.
+  // O acerto considera só despesas "Compartilhadas" (sem dono) em que ficou registrado quem
+  // realmente pagou (paid_by) ao marcar como paga — ex: Aluguel, Água, Energia.
   let paidBySplitDelta = 0
   let sharedPaidTotal = 0
   if (partner) {
@@ -127,11 +126,11 @@ export default async function DashboardPage({
     }
   }
 
-  const youBalance = youExpense - youFairShare + paidBySplitDelta
+  const youBalance = paidBySplitDelta
   const settleAmount = Math.abs(youBalance)
   const settleTone: 'even' | 'owed' | 'owes' =
     !partner || settleAmount < 1 ? 'even' : youBalance > 0 ? 'owed' : 'owes'
-  const gaugeBase = individualExpense + sharedPaidTotal
+  const gaugeBase = sharedPaidTotal
   const gaugeFraction = gaugeBase > 0 ? youBalance / gaugeBase : 0
   const settleSubtitle =
     settleTone === 'even'
