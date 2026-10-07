@@ -7,6 +7,22 @@ import { fmtCurrency, fmtDate } from '@/lib/format'
 export const runtime = 'nodejs'
 export const maxDuration = 300
 
+/**
+ * Regra de fechamento do mês desta casa: dinheiro que cai no dia 30 (ex: salário/vale
+ * recebido bem no fim do mês) é tratado como pertencente ao mês seguinte, já que não
+ * sobra tempo de gastar/contabilizar isso ainda dentro do mês corrente.
+ */
+function applyClosingDayRule(dateStr: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr)
+  if (!match) return dateStr
+  const [, yearStr, monthStr, dayStr] = match
+  if (Number(dayStr) !== 30) return dateStr
+  const year = Number(yearStr)
+  const month = Number(monthStr)
+  const next = new Date(year, month, 1)
+  return `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}-01`
+}
+
 const REVIEW_TOOL: Anthropic.Tool = {
   name: 'update_expense_review',
   description:
@@ -209,6 +225,7 @@ Sua missão:
        : 'use o id de um dos MEMBROS DA CASA se a descrição indicar claramente de quem é (ex: nome da pessoa no PIX, cartão de uma pessoa específica); senão omita (fica compartilhado).'
    }
    - category: escolha a categoria mais adequada dentre CATEGORIAS; se não souber, use "other".
+   - Regra de fechamento do mês desta casa: um lançamento datado no dia 30 é automaticamente registrado no sistema com a data do dia 1 do mês seguinte (dinheiro que cai no dia 30 é tratado como do mês seguinte, não dá tempo de usar/contabilizar ainda naquele mês). Isso é feito automaticamente pelo sistema — você não precisa ajustar a data manualmente, só informe a data real do extrato.
    - Depois de registrar, resuma em texto o que foi criado (quantas despesas, quantas rendas, quantas ficaram como furo de caixa/pendentes) — não repita cada lançamento em detalhe, só o resumo.
    - Não use update_expense_review para itens do extrato — essa ferramenta é só para despesas que já existiam antes.`
       : ''
@@ -304,7 +321,7 @@ Datas de referência: hoje é ${fmtDate(new Date().toISOString().slice(0, 10))}.
         name: e.name,
         amount: e.amount,
         category: e.category && validCategoryKeys.has(e.category) ? e.category : 'other',
-        due_date: e.date,
+        due_date: applyClosingDayRule(e.date),
         owner_profile_id:
           statementOwnerResolved !== undefined
             ? statementOwnerResolved || null
@@ -320,7 +337,7 @@ Datas de referência: hoje é ${fmtDate(new Date().toISOString().slice(0, 10))}.
         household_id: householdId,
         source: i.source,
         amount: i.amount,
-        date: i.date,
+        date: applyClosingDayRule(i.date),
         owner_profile_id:
           statementOwnerResolved !== undefined
             ? statementOwnerResolved || null
