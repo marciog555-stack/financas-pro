@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { Card } from '@/components/ui'
 import { MonthlyBarChart, CategoryPieChart } from '@/components/reports-charts'
 import { Sparkline } from '@/components/sparkline'
-import { Avatar } from '@/components/avatar'
+import { PersonCategoryCard } from '@/components/person-category-card'
 import { getAvatarUrl } from '@/lib/avatars'
 import { fmtCurrency } from '@/lib/format'
 import { PIE_COLORS } from '@/lib/chart-colors'
@@ -123,6 +123,10 @@ export default async function RelatoriosPage() {
       avatarUrl: getAvatarUrl(m.avatar_path),
       data,
       total: data.reduce((s, c) => s + c.value, 0),
+      expenses: expenses
+        .filter((e) => e.owner_profile_id === m.id)
+        .map((e) => ({ id: e.id, name: e.name, amount: Number(e.amount), due_date: e.due_date, category: e.category })),
+      pendingCount: (allExpenses ?? []).filter((e) => e.owner_profile_id === m.id && e.needs_review).length,
     }
   })
 
@@ -204,31 +208,7 @@ export default async function RelatoriosPage() {
       {peopleCategoryData.length > 0 && (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 animate-fade-in-up [animation-delay:200ms]">
           {peopleCategoryData.map((person) => (
-            <Card key={person.id}>
-              <div className="mb-3 flex items-center gap-2">
-                <Avatar name={person.name} src={person.avatarUrl} size={24} />
-                <h2 className="text-sm font-semibold">Gastos de {person.name.split(' ')[0]}</h2>
-              </div>
-              <CategoryPieChart data={person.data} total={person.total} />
-              {person.data.length > 0 && (
-                <div className="mt-4 flex flex-col divide-y divide-border">
-                  {person.data.map((c, i) => (
-                    <div key={c.key} className="flex items-center gap-3 py-2">
-                      <span
-                        className="h-2.5 w-2.5 shrink-0 rounded-full"
-                        style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }}
-                      />
-                      <span className="min-w-0 flex-1 truncate text-sm text-foreground/70">
-                        {c.emoji} {c.name}
-                      </span>
-                      <span className="shrink-0 text-right font-mono text-sm font-medium">
-                        {fmtCurrency(c.value)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </Card>
+            <PersonCategoryCard key={person.id} person={person} categories={categories} />
           ))}
         </div>
       )}
