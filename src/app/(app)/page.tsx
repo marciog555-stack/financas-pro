@@ -78,8 +78,12 @@ export default async function DashboardPage({
     .sort((a, b) => (a.due_date ?? '').localeCompare(b.due_date ?? ''))
     .slice(0, 5)
 
+  // Lançamentos pendentes de explicação ("furo de caixa") ainda não têm dono/categoria
+  // confirmados, então não entram no acerto de contas nem no gasto por pessoa até serem resolvidos.
+  const reviewedExpenses = (expenses ?? []).filter((e) => !e.needs_review)
+
   const spendByOwner = new Map<string | null, number>()
-  for (const e of expenses ?? []) {
+  for (const e of reviewedExpenses) {
     const key = e.owner_profile_id
     spendByOwner.set(key, (spendByOwner.get(key) ?? 0) + Number(e.amount))
   }
@@ -101,8 +105,8 @@ export default async function DashboardPage({
     return (list ?? []).filter((x) => x.owner_profile_id === ownerId).reduce((s, x) => s + Number(x.amount), 0)
   }
 
-  const youExpense = amountBy(expenses, you.id)
-  const partnerExpense = partner ? amountBy(expenses, partner.id) : 0
+  const youExpense = amountBy(reviewedExpenses, you.id)
+  const partnerExpense = partner ? amountBy(reviewedExpenses, partner.id) : 0
   // Gastos "Compartilhados" (sem dono) já saem de um caixa comum — não geram dívida entre os dois,
   // a menos que alguém tenha registrado quem realmente pagou (paid_by) ao marcar como paga.
   const individualExpense = youExpense + partnerExpense
@@ -113,7 +117,7 @@ export default async function DashboardPage({
   let paidBySplitDelta = 0
   let sharedPaidTotal = 0
   if (partner) {
-    for (const e of expenses ?? []) {
+    for (const e of reviewedExpenses) {
       if (e.owner_profile_id || !e.is_paid || !Array.isArray(e.paid_by)) continue
       const entries = e.paid_by as unknown as { profile_id?: string; amount?: number }[]
       const youPaid = entries.find((p) => p.profile_id === you.id)?.amount ?? 0
@@ -174,8 +178,8 @@ export default async function DashboardPage({
             <PersonSplitColumn
               name={partner.name || 'Parceiro'}
               avatarUrl={getAvatarUrl(partner.avatar_path)}
-              pct={totalExpense > 0 ? Math.round((amountBy(expenses, partner.id) / totalExpense) * 100) : 0}
-              spent={amountBy(expenses, partner.id)}
+              pct={totalExpense > 0 ? Math.round((partnerExpense / totalExpense) * 100) : 0}
+              spent={partnerExpense}
               income={amountBy(incomes, partner.id)}
               alignRight
             />
