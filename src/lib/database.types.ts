@@ -123,6 +123,7 @@ export type Database = {
           id: string
           key: string
           label: string
+          monthly_limit: number | null
           sort_order: number
         }
         Insert: {
@@ -132,6 +133,7 @@ export type Database = {
           id?: string
           key: string
           label: string
+          monthly_limit?: number | null
           sort_order?: number
         }
         Update: {
@@ -141,6 +143,7 @@ export type Database = {
           id?: string
           key?: string
           label?: string
+          monthly_limit?: number | null
           sort_order?: number
         }
         Relationships: [

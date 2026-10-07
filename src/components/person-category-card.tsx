@@ -126,27 +126,39 @@ export function PersonCategoryCard({
           </Link>
         )}
       </div>
-      <CategoryPieChart data={person.data} total={person.total} />
-      {person.data.length > 0 && (
-        <div className="mt-4 flex flex-col divide-y divide-border">
-          {person.data.map((c, i) => (
-            <button
-              key={c.key}
-              type="button"
-              onClick={() => setOpenCategory(c.key)}
-              className="flex items-center gap-3 py-2.5 text-left transition-colors hover:bg-surface-2/50"
-            >
-              <span
-                className="h-2.5 w-2.5 shrink-0 rounded-full"
-                style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }}
-              />
-              <span className="min-w-0 flex-1 truncate text-sm text-foreground/70">
-                {c.emoji} {c.name}
-              </span>
-              <span className="shrink-0 text-right font-mono text-sm font-medium">{fmtCurrency(c.value)}</span>
-            </button>
-          ))}
+      {person.data.length > 0 ? (
+        <div className="flex items-center gap-3">
+          <div className="w-32 shrink-0">
+            <CategoryPieChart data={person.data} total={person.total} size="compact" />
+          </div>
+          <div className="flex min-w-0 flex-1 flex-col divide-y divide-border">
+            {person.data.map((c, i) => {
+              const pct = person.total > 0 ? Math.round((c.value / person.total) * 100) : 0
+              return (
+                <button
+                  key={c.key}
+                  type="button"
+                  onClick={() => setOpenCategory(c.key)}
+                  className="flex items-center gap-2 py-2 text-left transition-colors hover:bg-surface-2/50"
+                >
+                  <span
+                    className="h-2 w-2 shrink-0 rounded-full"
+                    style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }}
+                  />
+                  <span className="min-w-0 flex-1 truncate text-xs text-foreground/70">
+                    {c.emoji} {c.name}
+                  </span>
+                  <div className="shrink-0 text-right">
+                    <p className="text-xs font-semibold">{pct}%</p>
+                    <p className="font-mono text-[10px] text-foreground/40">{fmtCurrency(c.value)}</p>
+                  </div>
+                </button>
+              )
+            })}
+          </div>
         </div>
+      ) : (
+        <CategoryPieChart data={person.data} total={person.total} size="compact" />
       )}
 
       <BottomSheet
