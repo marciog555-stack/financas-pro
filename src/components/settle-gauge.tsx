@@ -15,7 +15,7 @@ export function SettleGauge({ fraction, tone }: { fraction: number; tone: 'even'
   const y2 = cy - tickOuter * Math.sin(rad)
 
   const tickColor =
-    tone === 'owed' ? 'var(--accent-emerald)' : tone === 'owes' ? 'var(--accent-red)' : '#fff'
+    tone === 'owed' ? 'var(--accent-emerald)' : tone === 'owes' ? 'var(--accent-red)' : 'var(--foreground)'
 
   return (
     <svg viewBox="0 0 200 108" className="mx-auto w-full max-w-xs">
